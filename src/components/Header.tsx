@@ -118,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="Sembunyikan/Tampilkan Sandbox (Klik 3x)"
           >
             <img 
-              src="https://man2plg.sch.id/wp-content/uploads/2021/04/cropped-favicon-192x192.png" 
+              src="/api/logo.svg" 
               alt="Logo MAN 2 Palembang" 
               className="w-8 h-8 md:w-9 md:h-9 object-contain"
               referrerPolicy="no-referrer"

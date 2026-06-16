@@ -246,11 +246,77 @@ export function interceptFetch() {
     return isStaticMode;
   }
 
+  const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+    <radialGradient id="greenGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#15803d" />
+      <stop offset="100%" stop-color="#166534" />
+    </radialGradient>
+  </defs>
+  <path d="M 250 20 L 460 180 L 380 440 L 120 440 L 40 180 Z" fill="url(#greenGrad)" stroke="#15803d" stroke-width="4" filter="url(#shadow)" />
+  <path d="M 250 35 L 440 190 L 365 425 L 135 425 L 60 190 Z" fill="none" stroke="#facc15" stroke-width="3" />
+  <path d="M 250 42 L 430 195 L 358 418 L 142 418 L 70 195 Z" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.8" />
+  <polygon points="105,250 110,265 125,265 113,275 117,290 105,280 93,290 97,275 85,265 100,265" fill="#ffffff" />
+  <polygon points="395,250 400,265 415,265 403,275 407,290 395,280 383,290 387,275 375,265 390,265" fill="#ffffff" />
+  <path id="archUpper" d="M 85 210 A 180 180 0 0 1 415 210" fill="none" stroke="none" />
+  <text font-family="'Inter', sans-serif" font-weight="900" font-size="21" fill="#ffffff" letter-spacing="1">
+    <textPath href="#archUpper" startOffset="50%" text-anchor="middle">
+      MADRASAH ALIYAH NEGERI 2
+    </textPath>
+  </text>
+  <path id="archLower" d="M 110 370 A 170 170 0 0 0 390 370" fill="none" stroke="none" />
+  <text font-family="'Inter', sans-serif" font-weight="900" font-size="24" fill="#ffffff" letter-spacing="2">
+    <textPath href="#archLower" startOffset="50%" text-anchor="middle">
+      KOTA PALEMBANG
+    </textPath>
+  </text>
+  <polygon points="250,115 256,133 275,133 260,145 265,163 250,152 235,163 240,145 225,133 244,133" fill="#facc15" stroke="#eab308" stroke-width="1" />
+  <path d="M 245 260 C 210 230, 200 240, 185 190 C 205 180, 225 180, 245 200 Z" fill="#facc15" stroke="#ffffff" stroke-width="2" />
+  <path d="M 255 260 C 290 230, 300 240, 315 190 C 295 180, 275 180, 255 200 Z" fill="#facc15" stroke="#ffffff" stroke-width="2" />
+  <path d="M 195 205 L 235 215 M 195 215 L 235 225 M 195 225 L 235 235" stroke="#52525b" stroke-width="1.5" stroke-dasharray="3,3" />
+  <path d="M 305 205 L 265 215 M 305 215 L 265 225 M 305 225 L 265 235" stroke="#52525b" stroke-width="1.5" stroke-dasharray="3,3" />
+  <polygon points="210,245 290,245 305,270 270,285 250,265 230,285 195,270" fill="#1e293b" stroke="#0f172a" stroke-width="2" />
+  <path d="M 180 320 C 140 280, 130 220, 160 160" fill="none" stroke="#facc15" stroke-width="4" stroke-linecap="round" />
+  <circle cx="160" cy="165" r="3.5" fill="#facc15" />
+  <circle cx="151" cy="180" r="3.5" fill="#facc15" />
+  <circle cx="145" cy="200" r="3.5" fill="#facc15" />
+  <circle cx="140" cy="220" r="3.5" fill="#facc15" />
+  <circle cx="140" cy="240" r="3.5" fill="#facc15" />
+  <circle cx="145" cy="260" r="3.5" fill="#facc15" />
+  <circle cx="152" cy="280" r="3.5" fill="#facc15" />
+  <circle cx="165" cy="300" r="3.5" fill="#facc15" />
+  <path d="M 320 320 C 360 280, 370 220, 340 160" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" />
+  <circle cx="340" cy="165" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <circle cx="349" cy="180" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <circle cx="355" cy="200" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <circle cx="360" cy="220" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <circle cx="360" cy="240" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <circle cx="355" cy="260" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <circle cx="348" cy="280" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <circle cx="335" cy="300" r="5" fill="#ffffff" stroke="#e4e4e7" stroke-width="1" />
+  <path d="M 170 315 L 330 315 L 340 340 L 300 330 L 250 340 L 200 330 L 160 340 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2" />
+  <text x="250" y="331" font-family="'Inter', sans-serif" font-weight="900" font-size="11" fill="#0f172a" text-anchor="middle" letter-spacing="1">
+    IKHLAS BERAMAL
+  </text>
+  <circle cx="250" cy="28" r="4" fill="#facc15" />
+</svg>`;
+
   // Overwrite window.fetch globally using Object.defineProperty to bypass getter-only property restrictions
   try {
     Object.defineProperty(window, 'fetch', {
       value: async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
         const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+        // Immediately return our custom logo SVG for any logo paths to avoid CORS issues
+        if (urlStr.includes('/api/logo.svg') || urlStr.includes('/api/logo.png')) {
+          return new Response(LOGO_SVG, {
+            status: 200,
+            headers: { 'Content-Type': 'image/svg+xml' }
+          });
+        }
 
         // We only intercept requests starting with /api/ or containing /api/
         if (urlStr.startsWith('/api/') || urlStr.includes('/api/')) {
@@ -271,6 +337,13 @@ export function interceptFetch() {
     try {
       (window as any).fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
         const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+        if (urlStr.includes('/api/logo.svg') || urlStr.includes('/api/logo.png')) {
+          return new Response(LOGO_SVG, {
+            status: 200,
+            headers: { 'Content-Type': 'image/svg+xml' }
+          });
+        }
 
         if (urlStr.startsWith('/api/') || urlStr.includes('/api/')) {
           const staticActive = await checkStaticMode();
