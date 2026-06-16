@@ -335,7 +335,7 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-500 font-bold mb-1.5">Sandi Masuk (Sembarang untuk Sandbox)</label>
+                      <label className="block text-slate-500 font-bold mb-1.5">Sandi Masuk (Gunakan Sandi Keamanan Akun)</label>
                       <input
                         type="password"
                         placeholder="Sandi keamanan Anda..."
@@ -353,7 +353,7 @@ export default function App() {
                         <li><b>Ketua Tim:</b> Email: <code className="bg-white px-1 py-0.5 rounded text-rose-600">ketua@madrasah.sch.id</code></li>
                         <li><b>Waka Bidang:</b> Email: <code className="bg-white px-1 py-0.5 rounded text-rose-600">kesiswaan@madrasah.sch.id</code></li>
                         <li><b>Siswa Budi:</b> Email: <code className="bg-white px-1 py-0.5 rounded text-rose-600">budi@siswa.sch.id</code></li>
-                        <li><i>Gunakan password acak apa saja, bypass diaktifkan.</i></li>
+                        <li><i>Gunakan password default: <code className="bg-white px-1 py-0.5 rounded text-emerald-700 font-bold">man2plg123</code> untuk otentikasi.</i></li>
                       </ul>
                     </div>
 

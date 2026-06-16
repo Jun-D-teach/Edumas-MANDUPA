@@ -21,6 +21,7 @@ export interface User {
   name: string;
   role: UserRole;
   isVerified: boolean;
+  password?: string;
   verificationCode?: string;
   createdAt: string;
 }

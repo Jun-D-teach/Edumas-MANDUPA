@@ -23,8 +23,55 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectSimulatedRole,
   hasGAS
 }) => {
+  const [isUnlocked, setIsUnlocked] = React.useState(() => {
+    return sessionStorage.getItem('km_sandbox_unlocked') === 'true';
+  });
+  const [showSandbox, setShowSandbox] = React.useState(() => {
+    return localStorage.getItem('km_sandbox_show') !== 'false';
+  });
+  const [clickCount, setClickCount] = React.useState(0);
+
+  const handleLogoClick = () => {
+    const nextCount = clickCount + 1;
+    setClickCount(nextCount);
+    if (nextCount >= 3) {
+      const current = localStorage.getItem('km_sandbox_show') !== 'false';
+      localStorage.setItem('km_sandbox_show', !current ? 'true' : 'false');
+      setShowSandbox(!current);
+      setClickCount(0);
+      alert(!current ? "✅ Developer Mode: Sandbox Simulator diaktifkan di bar atas!" : "🔒 Developer Mode: Sandbox Simulator ditiadakan dari tampilan!");
+    }
+  };
+
+  const handleRoleSwitch = (role: UserRole) => {
+    if (role === 'pelapor') {
+      onSelectSimulatedRole(role);
+      return;
+    }
+
+    // Authorized check
+    if (user && user.role === role) {
+      onSelectSimulatedRole(role);
+      return;
+    }
+
+    if (isUnlocked) {
+      onSelectSimulatedRole(role);
+      return;
+    }
+
+    const pin = window.prompt("⚠️ PENGAMANAN KEAMANAN EDUMAS:\n\nUntuk mensimulasikan peran sebagai Admin, Bidang (Waka), atau Ketua Tim secara cepat tanpa login, silakan masukkan PIN Sandbox:\n(PIN Default: 123456 atau gunakan formulir Login resmi di bawah)");
+    if (pin === '123456' || pin === 'man2plg') {
+      sessionStorage.setItem('km_sandbox_unlocked', 'true');
+      setIsUnlocked(true);
+      onSelectSimulatedRole(role);
+    } else if (pin !== null) {
+      alert("❌ PIN Sandbox tidak cocok! Silakan login melalui formulir Masuk Akun resmi di bawah.");
+    }
+  };
+
   const roles: { role: UserRole; label: string; desc: string }[] = [
-    { role: 'pelapor', label: 'Pelapor (Siswa / Wali)', desc: 'Submit laporan' },
+    { role: 'pelapor', label: 'Pelapor (Siswa / Wali / Publik)', desc: 'Submit laporan' },
     { role: 'admin', label: 'Admin Madrasah', desc: 'SOP 2 & 3: Klasifikasi' },
     { role: 'bidang', label: 'Bidang Terkait (Waka)', desc: 'SOP 4: Investigasi' },
     { role: 'ketuatim', label: 'Ketua Tim (BK/Kepsek)', desc: 'SOP 5: Verifikasi' }
@@ -34,42 +81,63 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs" id="app-navigation-header">
       
       {/* Top Simulator Banner - Only visible for sandbox evaluations/testing */}
-      <div className="bg-slate-900 text-white px-4 py-2 text-xs flex flex-col sm:flex-row items-center justify-between gap-2 border-b border-slate-800">
-        <div className="flex items-center gap-1.5">
-          <span className="bg-emerald-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded animate-pulse">
-            Sandbox Simulator Mode
-          </span>
-          <span className="text-slate-350 font-medium">Beralih peran secara instan untuk menguji SOP Alur Kerja:</span>
-        </div>
+      {showSandbox && (
+        <div className="bg-slate-900 text-white px-4 py-2 text-xs flex flex-col sm:flex-row items-center justify-between gap-2 border-b border-slate-800 select-none">
+          <div className="flex items-center gap-1.5">
+            <span className="bg-emerald-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded animate-pulse">
+              Sandbox Simulator Mode {isUnlocked ? '🔓' : '🔒'}
+            </span>
+            <span className="text-slate-350 font-medium">Beralih peran secara instan untuk menguji SOP Alur Kerja (PIN Terkunci):</span>
+          </div>
 
-        <div className="flex flex-wrap gap-1.5 justify-center">
-          {roles.map((r) => (
+          <div className="flex flex-wrap items-center gap-1.5 justify-center">
+            {roles.map((r) => (
+              <button
+                key={r.role}
+                onClick={() => handleRoleSwitch(r.role)}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${simulatedRole === r.role ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                title={r.desc}
+              >
+                {r.label}
+              </button>
+            ))}
             <button
-              key={r.role}
-              onClick={() => onSelectSimulatedRole(r.role)}
-              className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${simulatedRole === r.role ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-              title={r.desc}
+              onClick={() => {
+                localStorage.setItem('km_sandbox_show', 'false');
+                setShowSandbox(false);
+              }}
+              className="ml-2 text-rose-400 hover:text-rose-300 hover:underline text-[10px] font-bold cursor-pointer transition-all border border-rose-950 px-1.5 py-0.5 rounded bg-rose-950/20"
+              title="Sembunyikan banner simulator untuk pengunjung umum di domain produksi"
             >
-              {r.label}
+              Hapus Banner
             </button>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand Logo */}
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-md shadow-emerald-650/15">
-            <GraduationCap className="w-5 h-5 md:w-6 md:h-6" />
-          </div>
+          <button 
+            onClick={handleLogoClick}
+            className="p-1 px-1.5 bg-emerald-50 border border-emerald-100 rounded-xl shadow-xs flex items-center justify-center cursor-pointer hover:bg-emerald-100 transition-all active:scale-95"
+            title="Sembunyikan/Tampilkan Sandbox (Klik 3x)"
+          >
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/a/a2/Logo_Kementerian_Agama.png" 
+              alt="Logo MAN 2 Palembang" 
+              className="w-8 h-8 md:w-9 md:h-9 object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </button>
           <div>
             <h1 className="font-extrabold text-slate-900 text-sm md:text-base leading-none flex items-center gap-1.5">
-              KAWAL MADRASAH
+              EDUMAS MAN 2 PALEMBANG
               <span className={`w-2 h-2 rounded-full ${hasGAS ? 'bg-emerald-500' : 'bg-slate-300'}`} title={hasGAS ? 'Google Sheets Terkoneksi' : 'Menggunakan Local DB File'} />
             </h1>
-            <p className="text-[10px] text-slate-400 font-medium mt-0.5">Aplikasi Pengaduan Siswa & Masyarakat</p>
+            <p className="text-[9px] md:text-[10px] text-slate-400 font-semibold mt-0.5">Sistem Layanan Manajemen Pengaduan Madrasah Online</p>
           </div>
         </div>
 

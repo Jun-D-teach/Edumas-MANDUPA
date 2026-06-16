@@ -44,6 +44,12 @@ function doPost(e) {
         return saveComplaintToSheet(data.complaint, data.log);
       case "updateComplaint":
         return updateComplaintInSheet(data.complaint, data.log);
+      case "getComplaints":
+        return getComplaintsFromSheet();
+      case "getUsers":
+        return getUsersFromSheet();
+      case "getLogs":
+        return getLogsFromSheet();
       default:
         return errorResponse("Aksi tidak didukung: " + action);
     }
@@ -218,6 +224,74 @@ function updateComplaintInSheet(complaint, log) {
   ]);
   
   return jsonResponse({ success: true });
+}
+
+function getComplaintsFromSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Complaints");
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  var list = [];
+  for (var i = 1; i < values.length; i++) {
+    list.push({
+      id: values[i][0].toString(),
+      ticketNumber: values[i][1].toString(),
+      pelaporName: values[i][2].toString(),
+      pelaporEmail: values[i][3].toString(),
+      category: values[i][4].toString(),
+      subCategory: values[i][5].toString(),
+      title: values[i][6].toString(),
+      description: values[i][7].toString(),
+      anonymous: values[i][8].toString() === "YA",
+      status: values[i][9].toString(),
+      directInfoAnswer: values[i][10] ? values[i][10].toString() : "",
+      departmentResponse: values[i][11] ? values[i][11].toString() : "",
+      finalAnswer: values[i][12] ? values[i][12].toString() : "",
+      assignedDepartment: values[i][13] ? values[i][13].toString() : "",
+      createdAt: values[i][14] ? values[i][14].toString() : "",
+      updatedAt: values[i][15] ? values[i][15].toString() : ""
+    });
+  }
+  return jsonResponse(list);
+}
+
+function getUsersFromSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Users");
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  var list = [];
+  for (var i = 1; i < values.length; i++) {
+    list.push({
+      id: values[i][0].toString(),
+      email: values[i][1].toString(),
+      name: values[i][2].toString(),
+      role: values[i][3].toString(),
+      isVerified: values[i][4].toString() === "TERVERIFIKASI",
+      createdAt: values[i][5] ? values[i][5].toString() : ""
+    });
+  }
+  return jsonResponse(list);
+}
+
+function getLogsFromSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Logs");
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  var list = [];
+  for (var i = 1; i < values.length; i++) {
+    list.push({
+      id: values[i][0].toString(),
+      complaintId: values[i][1].toString(),
+      actorName: values[i][2].toString(),
+      actorRole: values[i][3].toString(),
+      action: values[i][4].toString(),
+      notes: values[i][5].toString(),
+      timestamp: values[i][6] ? values[i][6].toString() : ""
+    });
+  }
+  return jsonResponse(list);
 }
 
 function jsonResponse(obj) {

@@ -30,6 +30,7 @@ const defaultUsers: User[] = [
     name: 'Ustadz Ahmad Fauzi (Admin)',
     role: 'admin',
     isVerified: true,
+    password: 'man2plg123',
     createdAt: new Date().toISOString()
   },
   {
@@ -38,6 +39,7 @@ const defaultUsers: User[] = [
     name: 'H. Syarifuddin, M.Pd (Ketua Tim)',
     role: 'ketuatim',
     isVerified: true,
+    password: 'man2plg123',
     createdAt: new Date().toISOString()
   },
   {
@@ -46,6 +48,7 @@ const defaultUsers: User[] = [
     name: 'Ustadzah Halimah (Waka Kesiswaan)',
     role: 'bidang',
     isVerified: true,
+    password: 'man2plg123',
     createdAt: new Date().toISOString()
   },
   {
@@ -54,6 +57,7 @@ const defaultUsers: User[] = [
     name: 'Budi Santoso (Siswa VII-A)',
     role: 'pelapor',
     isVerified: true,
+    password: 'man2plg123',
     createdAt: new Date().toISOString()
   }
 ];
@@ -266,6 +270,7 @@ app.post('/api/auth/register', async (req, res) => {
     email: email.toLowerCase(),
     role: (role as UserRole) || 'pelapor',
     isVerified: false,
+    password,
     verificationCode,
     createdAt: new Date().toISOString()
   };
@@ -336,6 +341,12 @@ app.post('/api/auth/login', (req, res) => {
 
   if (!user.isVerified) {
     return res.status(403).json({ error: 'Email belum diverifikasi. Silakan masukkan kode OTP.', unverified: true, email: user.email });
+  }
+
+  // Enforce authentic password matchcheck (fallback to man2plg123 for legacy seeded accounts)
+  const expectedPassword = user.password || 'man2plg123';
+  if (password !== expectedPassword) {
+    return res.status(401).json({ error: 'Kata sandi tidak sesuai. Silakan coba lagi.' });
   }
 
   // Success login
