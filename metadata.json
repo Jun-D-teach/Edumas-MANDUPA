@@ -1,0 +1,6 @@
+{
+  "name": "Kawal Madrasah",
+  "description": "Aplikasi pengaduan masyarakat & siswa di Madrasah untuk pelaporan pelanggaran secara aman dan anonim dengan integrasi Google Sheets & Apps Script.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
