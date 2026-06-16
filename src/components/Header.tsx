@@ -23,13 +23,18 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectSimulatedRole,
   hasGAS
 }) => {
-  const [isUnlocked, setIsUnlocked] = React.useState(() => {
-    return sessionStorage.getItem('km_sandbox_unlocked') === 'true';
-  });
   const [showSandbox, setShowSandbox] = React.useState(() => {
     return localStorage.getItem('km_sandbox_show') !== 'false';
   });
   const [clickCount, setClickCount] = React.useState(0);
+  const [showNotification, setShowNotification] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (showNotification) {
+      const timer = setTimeout(() => setShowNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showNotification]);
 
   const handleLogoClick = () => {
     const nextCount = clickCount + 1;
@@ -39,35 +44,13 @@ export const Header: React.FC<HeaderProps> = ({
       localStorage.setItem('km_sandbox_show', !current ? 'true' : 'false');
       setShowSandbox(!current);
       setClickCount(0);
-      alert(!current ? "✅ Developer Mode: Sandbox Simulator diaktifkan di bar atas!" : "🔒 Developer Mode: Sandbox Simulator ditiadakan dari tampilan!");
+      setShowNotification(!current ? "Simulator diaktifkan!" : "Simulator dinonaktifkan!");
     }
   };
 
   const handleRoleSwitch = (role: UserRole) => {
-    if (role === 'pelapor') {
-      onSelectSimulatedRole(role);
-      return;
-    }
-
-    // Authorized check
-    if (user && user.role === role) {
-      onSelectSimulatedRole(role);
-      return;
-    }
-
-    if (isUnlocked) {
-      onSelectSimulatedRole(role);
-      return;
-    }
-
-    const pin = window.prompt("⚠️ PENGAMANAN KEAMANAN EDUMAS:\n\nUntuk mensimulasikan peran sebagai Admin, Bidang (Waka), atau Ketua Tim secara cepat tanpa login, silakan masukkan PIN Sandbox:\n(PIN Default: 123456 atau gunakan formulir Login resmi di bawah)");
-    if (pin === '123456' || pin === 'man2plg') {
-      sessionStorage.setItem('km_sandbox_unlocked', 'true');
-      setIsUnlocked(true);
-      onSelectSimulatedRole(role);
-    } else if (pin !== null) {
-      alert("❌ PIN Sandbox tidak cocok! Silakan login melalui formulir Masuk Akun resmi di bawah.");
-    }
+    onSelectSimulatedRole(role);
+    setShowNotification(`Mode: ${role.toUpperCase()}`);
   };
 
   const roles: { role: UserRole; label: string; desc: string }[] = [
@@ -80,14 +63,22 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs" id="app-navigation-header">
       
+      {/* Absolute Notification Toast (Replaces clunky browser alerts) */}
+      {showNotification && (
+        <div className="fixed bottom-4 right-4 bg-slate-900/95 border border-slate-800 text-white rounded-xl shadow-xl px-4 py-3 text-xs flex items-center gap-2.5 animate-bounce z-50 backdrop-blur-xs">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500" />
+          <span className="font-bold tracking-wide">{showNotification}</span>
+        </div>
+      )}
+
       {/* Top Simulator Banner - Only visible for sandbox evaluations/testing */}
       {showSandbox && (
         <div className="bg-slate-900 text-white px-4 py-2 text-xs flex flex-col sm:flex-row items-center justify-between gap-2 border-b border-slate-800 select-none">
           <div className="flex items-center gap-1.5">
             <span className="bg-emerald-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded animate-pulse">
-              Sandbox Simulator Mode {isUnlocked ? '🔓' : '🔒'}
+              Sandbox Simulator Mode ⚡
             </span>
-            <span className="text-slate-350 font-medium">Beralih peran secara instan untuk menguji SOP Alur Kerja (PIN Terkunci):</span>
+            <span className="text-slate-350 font-medium">Beralih peran secara instan untuk menguji SOP Alur Kerja secara langsung:</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 justify-center">
@@ -105,6 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => {
                 localStorage.setItem('km_sandbox_show', 'false');
                 setShowSandbox(false);
+                setShowNotification("Banner disembunyikan. Klik logo MAN 3x untuk menampilkannya kembali!");
               }}
               className="ml-2 text-rose-400 hover:text-rose-300 hover:underline text-[10px] font-bold cursor-pointer transition-all border border-rose-950 px-1.5 py-0.5 rounded bg-rose-950/20"
               title="Sembunyikan banner simulator untuk pengunjung umum di domain produksi"
@@ -126,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="Sembunyikan/Tampilkan Sandbox (Klik 3x)"
           >
             <img 
-              src="https://upload.wikimedia.org/wikipedia/commons/a/a2/Logo_Kementerian_Agama.png" 
+              src="https://man2plg.sch.id/wp-content/uploads/2021/04/cropped-favicon-192x192.png" 
               alt="Logo MAN 2 Palembang" 
               className="w-8 h-8 md:w-9 md:h-9 object-contain"
               referrerPolicy="no-referrer"

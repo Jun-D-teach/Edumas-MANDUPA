@@ -11,7 +11,7 @@ import { AdminView } from './components/AdminView.js';
 import { BidangView } from './components/BidangView.js';
 import { KetuaView } from './components/KetuaView.js';
 import { EmailVerificationModal } from './components/EmailVerificationModal.js';
-import { ShieldCheck, LogIn, UserPlus, Info, CheckCircle2, ChevronRight, GraduationCap } from 'lucide-react';
+import { ShieldCheck, LogIn, UserPlus, Info, CheckCircle2, ChevronRight, GraduationCap, Lock, ShieldAlert, Key } from 'lucide-react';
 
 export default function App() {
   // Session & UI States
@@ -175,6 +175,126 @@ export default function App() {
     setAuthError('');
   };
 
+  const handleInstantLogin = async (email: string) => {
+    setAuthError('');
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'man2plg123' })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Autentikasi gagal.');
+      }
+
+      setUser(result.user);
+      setShowAuthCard(false);
+      clearAuthForms();
+    } catch (err: any) {
+      setAuthError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderLockedView = (targetRole: UserRole) => {
+    const roleDetails = {
+      admin: {
+        label: 'Admin Madrasah',
+        email: 'admin@madrasah.sch.id',
+        desc: 'SOP Hub Klasifikasi (Menilai kategori, menyusun disposisi awal, sanksi/bimbingan)'
+      },
+      bidang: {
+        label: 'Bidang Terkait (Waka)',
+        email: 'kesiswaan@madrasah.sch.id',
+        desc: 'Investigasi Lapangan (Melakukan wawancara, mencatat bukti, menyusun tanggapan dan draf laporan akhir)'
+      },
+      ketuatim: {
+        label: 'Ketua Tim (Komite BK/Kepsek)',
+        email: 'ketua@madrasah.sch.id',
+        desc: 'Verifikasi & Rekomendasi Akhir (Menerbitkan keputusan final sanksi/tindakan, penutupan status kasus)'
+      },
+      pelapor: {
+        label: 'Pelapor',
+        email: '',
+        desc: ''
+      }
+    };
+
+    const details = roleDetails[targetRole] || roleDetails.admin;
+
+    return (
+      <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-2xl mx-auto shadow-xl text-center space-y-6 md:p-12 animate-fade-in border-t-amber-500 border-t-4">
+        <div className="mx-auto w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+          <Lock className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase bg-amber-100 text-amber-800 border border-amber-200">
+            Akses Terkunci • Diperlukan Autentikasi
+          </span>
+          <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+            Masuk Ke Dashboard {details.label}
+          </h2>
+          <p className="text-slate-500 text-xs md:text-sm leading-relaxed max-w-md mx-auto">
+            Halaman ini dilindungi oleh otentikasi digital EDUMAS MAN 2 Palembang guna menjaga kerahasiaan identitas saksi/pelapor dan detail investigasi murni.
+          </p>
+        </div>
+
+        <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left space-y-3.5 max-w-md mx-auto">
+          <div className="flex items-start gap-2.5">
+            <ShieldAlert className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <span className="font-bold text-slate-700 block mb-0.5">Wewenang {details.label}:</span>
+              <p className="text-slate-500 leading-normal font-medium">{details.desc}</p>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200/60 pt-3 flex flex-col gap-1.5 text-xs">
+            <div className="flex justify-between flex-wrap gap-2">
+              <span className="text-slate-400">ID Email Resmi:</span>
+              <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold text-slate-800">{details.email}</code>
+            </div>
+            <div className="flex justify-between flex-wrap gap-2">
+              <span className="text-slate-400">Sandi Bawaan:</span>
+              <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold text-emerald-700">man2plg123</code>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-2">
+          <button
+            onClick={() => handleInstantLogin(details.email)}
+            className="flex-1 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/15 cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-1.5"
+          >
+            <Key className="w-3.5 h-3.5" />
+            Autentikasi Instan
+          </button>
+          <button
+            onClick={() => {
+              setLoginEmail(details.email);
+              setLoginPassword('man2plg123');
+              setAuthMode('login');
+              setShowAuthCard(true);
+              setAuthError('');
+              // Scroll to auth section smoothly
+              setTimeout(() => {
+                document.getElementById('auth-section-trigger')?.scrollIntoView({ behavior: 'smooth' });
+              }, 100);
+            }}
+            className="flex-1 px-5 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-1.5"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            Formulir Masuk
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const handleLogout = () => {
     setUser(null);
     setSimulatedRole('pelapor');
@@ -229,29 +349,41 @@ export default function App() {
               )}
 
               {simulatedRole === 'admin' && (
-                <AdminView
-                  user={getSimulatedUser()}
-                  complaints={complaints}
-                  onRefreshComplaints={fetchComplaints}
-                  gasUrl={gasUrl}
-                  onUpdateGasUrl={updateGasUrl}
-                />
+                user && user.role === 'admin' ? (
+                  <AdminView
+                    user={user}
+                    complaints={complaints}
+                    onRefreshComplaints={fetchComplaints}
+                    gasUrl={gasUrl}
+                    onUpdateGasUrl={updateGasUrl}
+                  />
+                ) : (
+                  renderLockedView('admin')
+                )
               )}
 
               {simulatedRole === 'bidang' && (
-                <BidangView
-                  user={getSimulatedUser()}
-                  complaints={complaints}
-                  onRefreshComplaints={fetchComplaints}
-                />
+                user && user.role === 'bidang' ? (
+                  <BidangView
+                    user={user}
+                    complaints={complaints}
+                    onRefreshComplaints={fetchComplaints}
+                  />
+                ) : (
+                  renderLockedView('bidang')
+                )
               )}
 
               {simulatedRole === 'ketuatim' && (
-                <KetuaView
-                  user={getSimulatedUser()}
-                  complaints={complaints}
-                  onRefreshComplaints={fetchComplaints}
-                />
+                user && user.role === 'ketuatim' ? (
+                  <KetuaView
+                    user={user}
+                    complaints={complaints}
+                    onRefreshComplaints={fetchComplaints}
+                  />
+                ) : (
+                  renderLockedView('ketuatim')
+                )
               )}
             </div>
 
