@@ -435,6 +435,10 @@ app.get('/api/complaints/:id/logs', (req, res) => {
   res.json(filteredLogs);
 });
 
+app.get('/api/logs', (req, res) => {
+  res.json(store.logs || []);
+});
+
 app.post('/api/complaints', async (req, res) => {
   const { pelaporName, pelaporEmail, category, subCategory, title, description, anonymous } = req.body;
 

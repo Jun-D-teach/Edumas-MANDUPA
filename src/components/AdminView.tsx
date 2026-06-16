@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Layers, Settings, FileSpreadsheet, Check, Send, AlertCircle, RefreshCw, MessageSquare, HelpCircle, ArrowRight, CornerDownRight } from 'lucide-react';
-import { Complaint, User, Department } from '../types.js';
+import React, { useState, useEffect } from 'react';
+import { Layers, Settings, FileSpreadsheet, Check, Send, AlertCircle, RefreshCw, MessageSquare, HelpCircle, ArrowRight, CornerDownRight, Printer, Calendar, Filter, FileText } from 'lucide-react';
+import { Complaint, User, Department, ActivityLog } from '../types.js';
 import { StatusBadge } from './RoleBadge.js';
 import { ComplaintDetailModal } from './ComplaintDetailModal.js';
 import { GASInstructions } from './GASInstructions.js';
@@ -25,10 +25,26 @@ export const AdminView: React.FC<AdminViewProps> = ({
   gasUrl,
   onUpdateGasUrl
 }) => {
-  const [activeTab, setActiveTab] = useState<'triage' | 'database'>('triage');
+  const [activeTab, setActiveTab] = useState<'triage' | 'database' | 'report'>('triage');
   const [editingUrl, setEditingUrl] = useState(gasUrl);
   const [savingUrl, setSavingUrl] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Report configurations state
+  const [reportStatus, setReportStatus] = useState<'ALL' | 'PENDING' | 'PROSES' | 'SELESAI'>('ALL');
+  const [reportFilterType, setReportFilterType] = useState<'MONTH' | 'RANGE'>('MONTH');
+  
+  const currentDate = new Date();
+  const currentMonthStr = String(currentDate.getMonth() + 1).padStart(2, '0');
+  const currentYearStr = String(currentDate.getFullYear());
+  
+  const [reportMonth, setReportMonth] = useState<string>(currentMonthStr);
+  const [reportYear, setReportYear] = useState<string>(currentYearStr);
+  const [reportStartDate, setReportStartDate] = useState<string>('');
+  const [reportEndDate, setReportEndDate] = useState<string>('');
+  
+  const [allLogs, setAllLogs] = useState<ActivityLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState<boolean>(false);
 
   // Classify fields
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
@@ -46,6 +62,21 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [finalPublishAnswer, setFinalPublishAnswer] = useState('');
 
   const departments: Department[] = ['Kesiswaan', 'Kurikulum', 'Sarana Prasarana', 'Humas', 'Keamanan'];
+  const MONTHS_LABEL_MAP: Record<string, string> = {
+    'ALL': 'Semua Bulan',
+    '01': 'Januari',
+    '02': 'Februari',
+    '03': 'Maret',
+    '04': 'April',
+    '05': 'Mei',
+    '06': 'Juni',
+    '07': 'Juli',
+    '08': 'Agustus',
+    '09': 'September',
+    '10': 'Oktober',
+    '11': 'November',
+    '12': 'Desember'
+  };
 
   const handleSaveGasUrl = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +173,69 @@ export const AdminView: React.FC<AdminViewProps> = ({
     }
   };
 
+  // Log batch fetcher for report compile
+  const fetchAllLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const response = await fetch('/api/logs');
+      if (response.ok) {
+        const data = await response.json();
+        setAllLogs(data);
+      }
+    } catch (err) {
+      console.error('Error fetching logs:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'report') {
+      fetchAllLogs();
+    }
+  }, [activeTab, complaints]);
+
+  const getFilteredComplaintsForReport = () => {
+    return sortedComplaints.filter(c => {
+      // 1. Status Filter
+      if (reportStatus !== 'ALL') {
+        const statusVal = c.status;
+        if (reportStatus === 'PENDING') {
+          if (statusVal !== 'PENDING') return false;
+        } else if (reportStatus === 'PROSES') {
+          if (statusVal !== 'FORWARDED' && statusVal !== 'DEPT_RESPONDED' && statusVal !== 'APPROVED') return false;
+        } else if (reportStatus === 'SELESAI') {
+          if (statusVal !== 'RESOLVED' && statusVal !== 'INFO_ANSWERED') return false;
+        }
+      }
+
+      // 2. Date/Period Filter
+      const compDate = new Date(c.createdAt);
+      if (reportFilterType === 'MONTH') {
+        if (reportYear !== 'ALL') {
+          if (compDate.getFullYear().toString() !== reportYear) return false;
+        }
+        if (reportMonth !== 'ALL') {
+          const compMonth = String(compDate.getMonth() + 1).padStart(2, '0');
+          if (compMonth !== reportMonth) return false;
+        }
+      } else {
+        if (reportStartDate) {
+          const start = new Date(reportStartDate);
+          start.setHours(0, 0, 0, 0);
+          if (compDate < start) return false;
+        }
+        if (reportEndDate) {
+          const end = new Date(reportEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (compDate > end) return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
   // Sort complaints newest first
   const sortedComplaints = [...complaints].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -156,6 +250,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
         >
           <Layers className="w-4 h-4" />
           Triage Laporan ({complaints.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('report')}
+          className={`flex items-center gap-1.5 px-5 py-3 text-xs md:text-sm font-bold tracking-wide border-b-2 transition-all cursor-pointer ${activeTab === 'report' ? 'border-emerald-600 text-emerald-800 bg-emerald-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <Printer className="w-4 h-4" />
+          Cetak Laporan & Rekapitulasi
         </button>
         <button
           onClick={() => setActiveTab('database')}
@@ -493,6 +594,430 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <p className="text-slate-500 text-[11px]">
                 Untuk merespons pengaduan, klik tombol <span className="text-emerald-700 font-bold">"Klasifikasi / SOP 3"</span> pada daftar laporan pending. Form tindakan interaktif akan mengembang langsung di dalam kartu laporan Anda agar penanganan lebih cepat dan bebas bug visual di layar sempit.
               </p>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'report' && (
+        <div className="space-y-6" id="report-view-hub">
+          {/* Injecting CSS print rule directly for full page takeover during browser print */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              #printable-report-area, #printable-report-area * {
+                visibility: visible !important;
+                color: black !important;
+                background-color: transparent !important;
+              }
+              #printable-report-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                background: white !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+              }
+              .no-print-break {
+                page-break-inside: avoid !important;
+              }
+            }
+          `}} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start align-start">
+            
+            {/* COLUMN 1: CONTROLS & FILTERING PANEL */}
+            <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-6 print:hidden">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="font-extrabold text-slate-800 text-sm tracking-tight flex items-center gap-1.5">
+                  <Filter className="w-4 h-4 text-emerald-600" />
+                  Konfigurasi Penyaringan Laporan
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Saring data sesuai status aduan & tanggal/bulan masuk</p>
+              </div>
+
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">Filter Status Aduan:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { val: 'ALL', label: 'Semua Status' },
+                    { val: 'PENDING', label: 'Baru / Pending' },
+                    { val: 'PROSES', label: 'Penyelidikan' },
+                    { val: 'SELESAI', label: 'Selesai / Terjawab' }
+                  ].map((btn) => (
+                    <button
+                      key={btn.val}
+                      type="button"
+                      onClick={() => setReportStatus(btn.val as any)}
+                      className={`p-2 rounded-xl border text-[11px] text-center font-bold transition-all cursor-pointer ${reportStatus === btn.val ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-xs' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filter Type Selector */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">Jenis Filter Waktu:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReportFilterType('MONTH')}
+                    className={`p-2 rounded-xl border text-[11px] text-center font-bold transition-all cursor-pointer ${reportFilterType === 'MONTH' ? 'border-indigo-600 bg-indigo-50 text-indigo-800' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}
+                  >
+                    Bulan & Tahun
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportFilterType('RANGE')}
+                    className={`p-2 rounded-xl border text-[11px] text-center font-bold transition-all cursor-pointer ${reportFilterType === 'RANGE' ? 'border-indigo-600 bg-indigo-50 text-indigo-800' : 'border-slate-200 hover:bg-slate-50 text-slate-600'}`}
+                  >
+                    Rentang Tanggal
+                  </button>
+                </div>
+              </div>
+
+              {/* Month/Year input */}
+              {reportFilterType === 'MONTH' ? (
+                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-500">Pilih Bulan:</label>
+                    <select
+                      value={reportMonth}
+                      onChange={(e) => setReportMonth(e.target.value)}
+                      className="w-full text-xs font-bold border border-slate-200 bg-white p-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="ALL">Semua Bulan</option>
+                      <option value="01">Januari</option>
+                      <option value="02">Februari</option>
+                      <option value="03">Maret</option>
+                      <option value="04">April</option>
+                      <option value="05">Mei</option>
+                      <option value="06">Juni</option>
+                      <option value="07">Juli</option>
+                      <option value="08">Agustus</option>
+                      <option value="09">September</option>
+                      <option value="10">Oktober</option>
+                      <option value="11">November</option>
+                      <option value="12">Desember</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-500">Pilih Tahun:</label>
+                    <select
+                      value={reportYear}
+                      onChange={(e) => setReportYear(e.target.value)}
+                      className="w-full text-xs font-bold border border-slate-200 bg-white p-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="ALL">Semua Tahun</option>
+                      <option value="2026">2026</option>
+                      <option value="2027">2027</option>
+                      <option value="2028">2028</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-500">Tanggal Mulai:</label>
+                    <input
+                      type="date"
+                      value={reportStartDate}
+                      onChange={(e) => setReportStartDate(e.target.value)}
+                      className="w-full text-xs font-semibold border border-slate-200 bg-white p-1.5 rounded-lg focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[10px] uppercase font-bold text-slate-500">Tanggal Selesai:</label>
+                    <input
+                      type="date"
+                      value={reportEndDate}
+                      onChange={(e) => setReportEndDate(e.target.value)}
+                      className="w-full text-xs font-semibold border border-slate-200 bg-white p-1.5 rounded-lg focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ACTION: TRIGGER PRINT */}
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-heavy transition-all rounded-xl py-3 text-xs font-extrabold shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                Cetak Dokumen Sekarang (PDF)
+              </button>
+
+              <div className="border-t border-slate-100 pt-3 space-y-2 text-[11px] text-slate-500 leading-relaxed">
+                <div className="font-bold text-slate-700">💡 Petunjuk Percetakan Sukses:</div>
+                <ul className="list-disc pl-4 space-y-1.5">
+                  <li>Saring data via kontrol di atas; preview cetakan ter-update otomatis.</li>
+                  <li>Pastikan opsi <b>"Cetak Grafik Latar Belakang / Background Graphics"</b> tercentang pada dialog cetak browser Anda.</li>
+                  <li>Disarankan mematikan **"Header dan Kaki / Headers and Footers"** di setelan cetak agar tata letak Kop Surat resmi tampak selaras.</li>
+                </ul>
+              </div>
+
+            </div>
+
+            {/* COLUMN 2: REAL-TIME DOCUMENT PREVIEW */}
+            <div className="lg:col-span-8 space-y-4">
+              <div className="text-xs font-semibold text-slate-400 flex items-center justify-between px-1 print:hidden">
+                <span>Dokumen Lembaran Hasil Filter (Siap Cetak):</span>
+                <span>Terfilter: {getFilteredComplaintsForReport().length} Aduan</span>
+              </div>
+
+              {/* Paper Layout */}
+              <div
+                id="printable-report-area"
+                className="bg-white border text-black border-slate-200 rounded-2xl p-8 shadow-md font-sans space-y-6 max-h-[85vh] overflow-y-auto print:max-h-none print:overflow-visible"
+              >
+                
+                {/* 1. KOP SURAT MADRASAH ALIYAH NEGERI 2 PALEMBANG */}
+                <div className="flex items-center gap-5 border-b-0 pb-1">
+                  <img
+                    src="/api/logo.svg"
+                    className="w-20 h-20 object-contain shrink-0"
+                    alt="Logo MAN 2 Palembang"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="text-center md:text-left flex-1 space-y-0.5">
+                    <h4 className="text-xs font-bold tracking-wider text-slate-800 uppercase">Kementerian Agama Republik Indonesia</h4>
+                    <h4 className="text-[10px] font-bold tracking-tight text-slate-600 uppercase">Kantor Kementerian Agama Kota Palembang</h4>
+                    <h3 className="text-base font-black tracking-tight text-emerald-800 uppercase">Madrasah Aliyah Negeri 2 Kota Palembang</h3>
+                    <p className="text-[10px] font-semibold text-slate-500 italic">Akreditasi A Plus Unggulan Akademik, Keagamaan & Karakter Mulia</p>
+                    <p className="text-[9px] text-slate-400 leading-tight">
+                      Jl. Lapangan Hatta No. 80, Palembang, Sumatera Selatan 30121 | Telp: (0711) 351182 | Web: www.man2palembang.sch.id
+                    </p>
+                  </div>
+                </div>
+
+                {/* DOUBLE LINE SEPARATOR */}
+                <div className="space-y-[2px] select-none">
+                  <div className="border-t-[3px] border-black w-full"></div>
+                  <div className="border-t-[1px] border-black w-full"></div>
+                </div>
+
+                {/* DOCUMENT TITLE */}
+                <div className="text-center space-y-1 py-1">
+                  <h2 className="text-sm font-black tracking-wide text-slate-850 uppercase">
+                    Laporan Rekapitulasi Penanganan Pengaduan Layanan Masyarakat (EDUMAS)
+                  </h2>
+                  <p className="text-[10px] text-slate-550 font-bold uppercase tracking-wider">
+                    Portal Penyelidikan, Tindakan Disposisi & Rilis Keputusan Terpusat
+                  </p>
+                </div>
+
+                {/* CRITERIA METADATA GRID */}
+                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl text-[11px] border border-slate-200/60 leading-normal">
+                  <div className="space-y-1">
+                    <div>
+                      <span className="text-slate-400 font-medium">Kriteria Status Aduan:</span>{' '}
+                      <span className="font-bold text-slate-850 block">
+                        {reportStatus === 'ALL' && 'Semua Status Laporan (Triage, Penyelidikan, Selesai)'}
+                        {reportStatus === 'PENDING' && 'Baru Masuk / Pending (Menunggu Triage Admin)'}
+                        {reportStatus === 'PROSES' && 'Sedang Diinvestigasi / Penyelidikan Bidang & Direview'}
+                        {reportStatus === 'SELESAI' && 'Selesai Ditangani / Terjawab & Publik'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Petugas Pembuat Rekap:</span>{' '}
+                      <span className="font-bold text-slate-850 block">{user.name} (Administrator MAN 2)</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-right">
+                    <div>
+                      <span className="text-slate-400 font-medium">Periode Filter Laporan:</span>{' '}
+                      <span className="font-bold text-slate-850 block">
+                        {reportFilterType === 'MONTH' ? (
+                          <>
+                            {reportMonth === 'ALL' ? 'Semua Bulan' : MONTHS_LABEL_MAP[reportMonth] || reportMonth} {reportYear === 'ALL' ? 'Semua Tahun' : reportYear}
+                          </>
+                        ) : (
+                          <>
+                            {reportStartDate ? new Date(reportStartDate).toLocaleDateString('id-ID') : 'Awal'} s.d. {reportEndDate ? new Date(reportEndDate).toLocaleDateString('id-ID') : 'Akhir'}
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Waktu Unduh / Cetak:</span>{' '}
+                      <span className="font-bold text-slate-850 block font-mono text-[10px]">
+                        {new Date().toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* QUANTITATIVE STATISTICAL TABLE */}
+                <div className="grid grid-cols-4 gap-3 text-center text-[10px] font-semibold leading-none">
+                  <div className="border border-slate-200 p-2 rounded-lg bg-slate-50">
+                    <div className="text-xs font-black text-slate-800">{getFilteredComplaintsForReport().length}</div>
+                    <div className="text-[9px] text-slate-550 uppercase tracking-wide mt-1">Total Cocok</div>
+                  </div>
+                  <div className="border border-slate-200 p-2 rounded-lg bg-amber-50/40">
+                    <div className="text-xs font-black text-amber-700">
+                      {getFilteredComplaintsForReport().filter(c => c.status === 'PENDING').length}
+                    </div>
+                    <div className="text-[9px] text-amber-600 uppercase tracking-wide mt-1">Pending</div>
+                  </div>
+                  <div className="border border-slate-200 p-2 rounded-lg bg-indigo-50/40">
+                    <div className="text-xs font-black text-indigo-700">
+                      {getFilteredComplaintsForReport().filter(c => c.status === 'FORWARDED' || c.status === 'DEPT_RESPONDED' || c.status === 'APPROVED').length}
+                    </div>
+                    <div className="text-[9px] text-indigo-600 uppercase tracking-wide mt-1">Penyelidikan</div>
+                  </div>
+                  <div className="border border-slate-200 p-2 rounded-lg bg-emerald-50/40">
+                    <div className="text-xs font-black text-emerald-800">
+                      {getFilteredComplaintsForReport().filter(c => c.status === 'RESOLVED' || c.status === 'INFO_ANSWERED').length}
+                    </div>
+                    <div className="text-[9px] text-emerald-600 uppercase tracking-wide mt-1">Selesai</div>
+                  </div>
+                </div>
+
+                {/* THE COMPLETE LIST OF PRINTABLE DOSSIERS */}
+                <div className="space-y-6">
+                  {getFilteredComplaintsForReport().length === 0 ? (
+                    <div className="text-center py-12 border border-dashed border-slate-200 text-slate-400 text-xs rounded-xl font-medium">
+                      Negasi Hasil: Tidak ada data aduan yang cocok dengan variabel filter di samping.
+                    </div>
+                  ) : (
+                    getFilteredComplaintsForReport().map((c, idx) => {
+                      const cLogs = allLogs
+                        .filter(l => l.complaintId === c.id)
+                        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+                      return (
+                        <div key={c.id} className="border border-slate-200 rounded-xl p-4.5 space-y-3.5 no-print-break text-xs bg-white text-black relative">
+                          
+                          {/* Title Header with status */}
+                          <div className="flex items-start justify-between border-b pb-2 text-[10px]">
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-slate-500 uppercase">NO. {idx + 1} | NOMOR TIKET: </span>
+                              <span className="font-mono font-black bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-800 select-all">{c.ticketNumber}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-slate-500 font-bold">{new Date(c.createdAt).toLocaleDateString('id-ID')}</span>
+                              <span className="mx-1 border-r h-2.5 inline-block border-slate-300"></span>
+                              <span className={`font-mono font-bold uppercase text-[9px] px-2 py-0.5 rounded border ${c.status === 'RESOLVED' || c.status === 'INFO_ANSWERED' ? 'bg-emerald-100 text-emerald-800 border-emerald-250' : c.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border-amber-250' : 'bg-indigo-100 text-indigo-850 border-indigo-250'}`}>
+                                {c.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Complaint Identity Grid */}
+                          <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg text-[10px] border border-slate-100">
+                            <div>
+                              <span className="text-slate-400 block font-medium uppercase tracking-wider text-[8px]">Melaporkan Nama:</span>
+                              <span className="font-bold text-slate-800 text-[10.5px]">
+                                {c.anonymous ? 'Rahasia / Terjaga (Anonim)' : c.pelaporName}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-medium uppercase tracking-wider text-[8px]">Metodologi Aduan:</span>
+                              <span className="font-bold text-slate-800 text-[10.5px]">{c.category}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block font-medium uppercase tracking-wider text-[8px]">Topik / Sub-Kategori:</span>
+                              <span className="font-bold text-slate-800 text-[10.5px]">{c.subCategory}</span>
+                            </div>
+                          </div>
+
+                          {/* Complaint description */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Konteks Laporan:</span>
+                            <h5 className="font-black text-slate-800 text-xs">{c.title}</h5>
+                            <p className="text-slate-600 leading-relaxed text-[11px] bg-slate-50/20 p-3 rounded border border-slate-100 select-all whitespace-pre-wrap">
+                              {c.description}
+                            </p>
+                          </div>
+
+                          {/* WORKFLOW TRACK / HISTORY STEPS (The critical requested element!) */}
+                          <div className="space-y-2 border-t border-slate-100 pt-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-200/50 leading-relaxed">
+                            <span className="font-extrabold text-slate-700 block uppercase text-[10.5px] tracking-wider mb-2">
+                              Alur Penyelidikan Laporan & Keputusan Jawaban:
+                            </span>
+                            
+                            {cLogs.length === 0 ? (
+                              <p className="text-slate-400 italic text-[11px]">Belum ada riwayat aktivitas penanganan terekam.</p>
+                            ) : (
+                              <div className="space-y-2 pb-1">
+                                {cLogs.map((log, index) => (
+                                  <div key={log.id} className="text-[11px] leading-relaxed flex items-start gap-2 border-b border-dashed border-slate-105 pb-1.5 last:border-b-0 last:pb-0">
+                                    <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 font-bold text-[9px] flex items-center justify-center shrink-0 mt-0.5 select-none">{index + 1}</span>
+                                    <div className="text-slate-650 flex-1">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-bold text-slate-500 font-mono">[{new Date(log.timestamp).toLocaleDateString('id-ID')} {new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}]</span>
+                                        <span className="text-indigo-800 font-black uppercase text-[8.5px] bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded shrink-0">
+                                          {log.actorRole === 'admin' ? 'KABAG ADMIN' : log.actorRole === 'ketuatim' ? 'KETUA TIM' : log.actorRole === 'bidang' ? `GURU WAKA ${c.assignedDepartment || ''}` : 'PELAPOR'}
+                                        </span>
+                                        <span className="font-bold text-slate-800 text-[10.5px]">{log.actorName}</span>
+                                      </div>
+                                      <p className="text-slate-700 font-medium text-[11px] mt-0.5 leading-relaxed">{log.notes}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Direct Info Answer */}
+                            {c.status === 'INFO_ANSWERED' && c.directInfoAnswer && (
+                              <div className="mt-3 bg-teal-50 border border-teal-200 p-3 rounded-lg text-[11px] animate-fade-in text-teal-950">
+                                <span className="font-extrabold text-teal-900 block uppercase text-[9px] tracking-wider mb-0.5">Solusi Selesai: Jawaban Informasi Resmi Dirilis Admin:</span>
+                                <p className="text-slate-750 italic font-medium leading-relaxed">"{c.directInfoAnswer}"</p>
+                              </div>
+                            )}
+
+                            {/* Finished Finalized Answer */}
+                            {c.finalAnswer && (
+                              <div className="mt-3 bg-indigo-50 border border-indigo-200 p-3 rounded-lg text-[11px] animate-fade-in text-indigo-950">
+                                <span className="font-extrabold text-indigo-900 block uppercase text-[9px] tracking-wider mb-0.5">Solusi Selesai: Jawaban Resmi Ditetapkan & rilis Publik:</span>
+                                <p className="text-slate-800 italic font-semibold leading-relaxed">"{c.finalAnswer}"</p>
+                                {c.departmentResponse && c.departmentResponse !== c.finalAnswer && (
+                                  <div className="border-t border-indigo-100/80 mt-1.5 pt-1.5 text-[10px] text-slate-500 italic font-medium leading-normal">
+                                    * Draf Kajian Waka {c.assignedDepartment}: "{c.departmentResponse}"
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* SIGNATURE SECTION (Validation Lembar) */}
+                <div className="pt-8 border-t border-slate-100 flex justify-end no-print-break text-xs mt-8">
+                  <div className="text-center space-y-12 pr-6">
+                    <div className="space-y-0.5">
+                      <p className="text-slate-700 font-semibold">
+                        Palembang, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                      <p className="text-slate-500 font-medium leading-none mb-1">Mengesahkan,</p>
+                      <p className="font-bold text-slate-850">Ketua Tim Pengendalian & Mutu Keluhan</p>
+                      <p className="text-[10px] text-slate-400 font-medium">MAN 2 Kota Palembang</p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="border-b border-black w-48 mx-auto"></div>
+                      <p className="text-[11px] font-bold uppercase text-slate-800 tracking-wider">NIP. 197508102005011003</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
             </div>
 
           </div>
