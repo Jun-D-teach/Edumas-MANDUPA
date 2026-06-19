@@ -25,7 +25,7 @@ export const BidangView: React.FC<BidangViewProps> = ({ user, complaints, onRefr
   const [departmentResponse, setDepartmentResponse] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const departments: Department[] = ['Kesiswaan', 'Kurikulum', 'Sarana Prasarana', 'Humas', 'Keamanan'];
+  const departments: Department[] = ['Kesiswaan', 'Kurikulum', 'Sarana Prasarana', 'Humas', 'Keamanan', 'Kaur TU'];
 
   // Filter complaints assigned to this department and have status 'FORWARDED' (waiting for department action)
   // We can also show resolved ones for reference!
@@ -47,7 +47,7 @@ export const BidangView: React.FC<BidangViewProps> = ({ user, complaints, onRefr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'INPUT_TANGGAPAN_BIDANG',
-          actorName: `Waka ${actingDept}`,
+          actorName: actingDept === 'Kaur TU' ? 'Kaur TU' : `Waka ${actingDept}`,
           actorRole: 'bidang',
           departmentResponse: departmentResponse.trim(),
           notes: `Memberikan laporan tanggapan penyelidikan & langkah taktis dari Bidang ${actingDept}.`
@@ -92,7 +92,7 @@ export const BidangView: React.FC<BidangViewProps> = ({ user, complaints, onRefr
             className="border border-slate-200 bg-white px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             {departments.map((dept) => (
-              <option key={dept} value={dept}>Waka {dept}</option>
+              <option key={dept} value={dept}>{dept === 'Kaur TU' ? 'Kaur TU' : `Waka ${dept}`}</option>
             ))}
           </select>
         </div>

@@ -29,6 +29,7 @@ export default function App() {
   // Auth Form Fields
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [selectedBidangEmail, setSelectedBidangEmail] = useState('kesiswaan@madrasah.sch.id');
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -367,7 +368,7 @@ export default function App() {
         desc: 'SOP Hub Klasifikasi (Menilai kategori, menyusun disposisi awal, sanksi/bimbingan)'
       },
       bidang: {
-        label: 'Bidang Terkait (Waka)',
+        label: 'Bidang Terkait (Waka & Kaur TU)',
         email: 'kesiswaan@madrasah.sch.id',
         desc: 'Investigasi Lapangan (Melakukan wawancara, mencatat bukti, menyusun tanggapan dan draf laporan akhir)'
       },
@@ -383,7 +384,17 @@ export default function App() {
       }
     };
 
+    const bidangOptions = [
+      { name: 'Ustadzah Halimah (Waka Kesiswaan)', email: 'kesiswaan@madrasah.sch.id' },
+      { name: 'Ustadz Mansur (Waka Kurikulum)', email: 'kurikulum@madrasah.sch.id' },
+      { name: 'H. Sobirin, M.Si (Waka Sarana Prasarana)', email: 'sarpras@madrasah.sch.id' },
+      { name: 'Dra. Hj. Nurjanah (Waka Humas)', email: 'humas@madrasah.sch.id' },
+      { name: 'Pak Satrio (Waka Keamanan)', email: 'keamanan@madrasah.sch.id' },
+      { name: 'Hj. Aminah, S.Sos (Kaur TU)', email: 'tu@madrasah.sch.id' }
+    ];
+
     const details = roleDetails[targetRole] || roleDetails.admin;
+    const activeEmail = targetRole === 'bidang' ? selectedBidangEmail : details.email;
 
     return (
       <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-2xl mx-auto shadow-xl text-center space-y-6 md:p-12 animate-fade-in border-t-amber-500 border-t-4">
@@ -404,6 +415,21 @@ export default function App() {
         </div>
 
         <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-left space-y-3.5 max-w-md mx-auto">
+          {targetRole === 'bidang' && (
+            <div className="mb-1">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Pilih Akun Bidang (Waka) & Kaur TU:</label>
+              <select
+                value={selectedBidangEmail}
+                onChange={(e) => setSelectedBidangEmail(e.target.value)}
+                className="w-full border border-slate-200 bg-white p-2 text-xs font-bold rounded-lg text-indigo-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                {bidangOptions.map(opt => (
+                  <option key={opt.email} value={opt.email}>{opt.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="flex items-start gap-2.5">
             <ShieldAlert className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
             <div className="text-xs">
@@ -415,7 +441,7 @@ export default function App() {
           <div className="border-t border-slate-200/60 pt-3 flex flex-col gap-1.5 text-xs">
             <div className="flex justify-between flex-wrap gap-2">
               <span className="text-slate-400">ID Email Resmi:</span>
-              <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold text-slate-800">{details.email}</code>
+              <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold text-slate-800">{activeEmail}</code>
             </div>
             <div className="flex justify-between flex-wrap gap-2">
               <span className="text-slate-400">Sandi Bawaan:</span>
@@ -426,7 +452,7 @@ export default function App() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-2">
           <button
-            onClick={() => handleInstantLogin(details.email)}
+            onClick={() => handleInstantLogin(activeEmail)}
             className="flex-1 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/15 cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-1.5"
           >
             <Key className="w-3.5 h-3.5" />
@@ -434,7 +460,7 @@ export default function App() {
           </button>
           <button
             onClick={() => {
-              setLoginEmail(details.email);
+              setLoginEmail(activeEmail);
               setLoginPassword('man2plg123');
               setAuthMode('login');
               setShowAuthCard(true);

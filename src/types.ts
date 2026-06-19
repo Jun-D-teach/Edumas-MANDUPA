@@ -13,7 +13,7 @@ export type ComplaintStatus =
   | 'APPROVED'          // Disetujui oleh Ketua Tim, menunggu rilis final Admin
   | 'RESOLVED';         // Selesai ditanggapi dan dirilis ke pelapor (Pengaduan Terjawab)
 
-export type Department = 'Kesiswaan' | 'Kurikulum' | 'Sarana Prasarana' | 'Humas' | 'Keamanan';
+export type Department = 'Kesiswaan' | 'Kurikulum' | 'Sarana Prasarana' | 'Humas' | 'Keamanan' | 'Kaur TU';
 
 export interface User {
   id: string;

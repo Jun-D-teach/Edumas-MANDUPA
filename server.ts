@@ -54,6 +54,51 @@ const defaultUsers: User[] = [
     createdAt: new Date().toISOString()
   },
   {
+    id: 'u-3b',
+    email: 'kurikulum@madrasah.sch.id',
+    name: 'Ustadz Mansur (Waka Kurikulum)',
+    role: 'bidang',
+    isVerified: true,
+    password: 'man2plg123',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'u-3c',
+    email: 'sarpras@madrasah.sch.id',
+    name: 'H. Sobirin, M.Si (Waka Sarana Prasarana)',
+    role: 'bidang',
+    isVerified: true,
+    password: 'man2plg123',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'u-3d',
+    email: 'humas@madrasah.sch.id',
+    name: 'Dra. Hj. Nurjanah (Waka Humas)',
+    role: 'bidang',
+    isVerified: true,
+    password: 'man2plg123',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'u-3e',
+    email: 'keamanan@madrasah.sch.id',
+    name: 'Pak Satrio (Waka Keamanan)',
+    role: 'bidang',
+    isVerified: true,
+    password: 'man2plg123',
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'u-3f',
+    email: 'tu@madrasah.sch.id',
+    name: 'Hj. Aminah, S.Sos (Kaur TU)',
+    role: 'bidang',
+    isVerified: true,
+    password: 'man2plg123',
+    createdAt: new Date().toISOString()
+  },
+  {
     id: 'u-4',
     email: 'budi@siswa.sch.id',
     name: 'Budi Santoso (Siswa VII-A)',
@@ -185,7 +230,16 @@ function initDataStore(): DataStore {
       const p = fs.readFileSync(DATA_FILE, 'utf-8');
       const loaded = JSON.parse(p) as DataStore;
       // Merge elements if keys are missing
-      if (!loaded.users) loaded.users = defaultUsers;
+      if (!loaded.users) {
+        loaded.users = defaultUsers;
+      } else {
+        // Ensure all default waka / ketua/ admin are present even in old saves
+        defaultUsers.forEach(du => {
+          if (!loaded.users.some(u => u.email.toLowerCase() === du.email.toLowerCase())) {
+            loaded.users.push(du);
+          }
+        });
+      }
       if (!loaded.complaints) loaded.complaints = defaultComplaints;
       if (!loaded.logs) loaded.logs = defaultLogs;
       if (!loaded.notifications) loaded.notifications = [];
@@ -626,6 +680,26 @@ app.post('/api/auth/forgot-password-reset', (req, res) => {
   delete user.resetCode;
   saveStore();
   return res.json({ success: true, message: 'Kata sandi berhasil diperbarui.' });
+});
+
+// Admin Account Monitoring and Management
+app.get('/api/admin/users', (req, res) => {
+  // Return waka and ketua tim accounts, plus any other registered users if wanted, for oversight
+  res.json(store.users);
+});
+
+app.post('/api/admin/change-user-password', (req, res) => {
+  const { userId, newPassword } = req.body;
+  if (!userId || !newPassword) {
+    return res.status(400).json({ error: 'Data tidak lengkap.' });
+  }
+  const targetUser = store.users.find(u => u.id === userId);
+  if (!targetUser) {
+    return res.status(404).json({ error: 'Akun petugas tidak ditemukan.' });
+  }
+  targetUser.password = newPassword;
+  saveStore();
+  return res.json({ success: true, message: `Kata sandi akun ${targetUser.name} berhasil diperbarui.` });
 });
 
 app.get('/api/notifications', (req, res) => {
