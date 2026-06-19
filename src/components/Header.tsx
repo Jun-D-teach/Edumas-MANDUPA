@@ -31,9 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   onMarkNotificationRead,
   onMarkAllNotificationsRead
 }) => {
-  const [showSandbox, setShowSandbox] = React.useState(() => {
-    return localStorage.getItem('km_sandbox_show') !== 'false';
-  });
+  const showSandbox = false;
   const [clickCount, setClickCount] = React.useState(0);
   const [showNotification, setShowNotification] = React.useState<string | null>(null);
   const [showBellDropdown, setShowBellDropdown] = React.useState(false);
@@ -72,28 +70,8 @@ export const Header: React.FC<HeaderProps> = ({
   }, [showNotification]);
 
   const handleLogoClick = () => {
-    const nextCount = clickCount + 1;
-    setClickCount(nextCount);
-    if (nextCount >= 3) {
-      const current = localStorage.getItem('km_sandbox_show') !== 'false';
-      localStorage.setItem('km_sandbox_show', !current ? 'true' : 'false');
-      setShowSandbox(!current);
-      setClickCount(0);
-      setShowNotification(!current ? "Simulator diaktifkan!" : "Simulator dinonaktifkan!");
-    }
+    setShowNotification("Sistem Layanan Pengaduan Madrasah Online (EDUMAS)");
   };
-
-  const handleRoleSwitch = (role: UserRole) => {
-    onSelectSimulatedRole(role);
-    setShowNotification(`Mode: ${role.toUpperCase()}`);
-  };
-
-  const roles: { role: UserRole; label: string; desc: string }[] = [
-    { role: 'pelapor', label: 'Pelapor (Siswa / Wali / Publik)', desc: 'Submit laporan' },
-    { role: 'admin', label: 'Admin Madrasah', desc: 'SOP 2 & 3: Klasifikasi' },
-    { role: 'bidang', label: 'Bidang Terkait (Waka)', desc: 'SOP 4: Investigasi' },
-    { role: 'ketuatim', label: 'Ketua Tim (BK/Kepsek)', desc: 'SOP 5: Verifikasi' }
-  ];
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs" id="app-navigation-header">
@@ -103,42 +81,6 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="fixed bottom-4 right-4 bg-slate-900/95 border border-slate-800 text-white rounded-xl shadow-xl px-4 py-3 text-xs flex items-center gap-2.5 animate-bounce z-50 backdrop-blur-xs">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500" />
           <span className="font-bold tracking-wide">{showNotification}</span>
-        </div>
-      )}
-
-      {/* Top Simulator Banner - Only visible for sandbox evaluations/testing */}
-      {showSandbox && (
-        <div className="bg-slate-900 text-white px-4 py-2 text-xs flex flex-col sm:flex-row items-center justify-between gap-2 border-b border-slate-800 select-none">
-          <div className="flex items-center gap-1.5">
-            <span className="bg-emerald-600 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded animate-pulse">
-              Sandbox Simulator Mode ⚡
-            </span>
-            <span className="text-slate-350 font-medium">Beralih peran secara instan untuk menguji SOP Alur Kerja secara langsung:</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 justify-center">
-            {roles.map((r) => (
-              <button
-                key={r.role}
-                onClick={() => handleRoleSwitch(r.role)}
-                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${simulatedRole === r.role ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
-                title={r.desc}
-              >
-                {r.label}
-              </button>
-            ))}
-            <button
-              onClick={() => {
-                localStorage.setItem('km_sandbox_show', 'false');
-                setShowSandbox(false);
-                setShowNotification("Banner disembunyikan. Klik logo MAN 3x untuk menampilkannya kembali!");
-              }}
-              className="ml-2 text-rose-400 hover:text-rose-300 hover:underline text-[10px] font-bold cursor-pointer transition-all border border-rose-950 px-1.5 py-0.5 rounded bg-rose-950/20"
-              title="Sembunyikan banner simulator untuk pengunjung umum di domain produksi"
-            >
-              Hapus Banner
-            </button>
-          </div>
         </div>
       )}
 

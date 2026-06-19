@@ -16,8 +16,29 @@ interface BidangViewProps {
 }
 
 export const BidangView: React.FC<BidangViewProps> = ({ user, complaints, onRefreshComplaints }) => {
-  // Let the user simulate acting as different departments on-the-fly for rich sandbox checking
-  const [actingDept, setActingDept] = useState<Department>('Kesiswaan');
+  const [actingDept, setActingDept] = useState<Department>(() => {
+    const email = user?.email?.toLowerCase().trim();
+    if (email === 'kesiswaan@madrasah.sch.id') return 'Kesiswaan';
+    if (email === 'kurikulum@madrasah.sch.id') return 'Kurikulum';
+    if (email === 'sarpras@madrasah.sch.id') return 'Sarana Prasarana';
+    if (email === 'humas@madrasah.sch.id') return 'Humas';
+    if (email === 'keamanan@madrasah.sch.id') return 'Keamanan';
+    if (email === 'tu@madrasah.sch.id') return 'Kaur TU';
+    return 'Kesiswaan';
+  });
+
+  React.useEffect(() => {
+    if (user) {
+      const email = user.email?.toLowerCase().trim();
+      if (email === 'kesiswaan@madrasah.sch.id') setActingDept('Kesiswaan');
+      else if (email === 'kurikulum@madrasah.sch.id') setActingDept('Kurikulum');
+      else if (email === 'sarpras@madrasah.sch.id') setActingDept('Sarana Prasarana');
+      else if (email === 'humas@madrasah.sch.id') setActingDept('Humas');
+      else if (email === 'keamanan@madrasah.sch.id') setActingDept('Keamanan');
+      else if (email === 'tu@madrasah.sch.id') setActingDept('Kaur TU');
+    }
+  }, [user]);
+
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
   // Response form
@@ -71,30 +92,14 @@ export const BidangView: React.FC<BidangViewProps> = ({ user, complaints, onRefr
   return (
     <div className="space-y-6" id="department-view-hub">
       
-      {/* Simulation Selector of Departments */}
+      {/* Meja Kerja Info */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="space-y-1 text-center md:text-left">
           <h3 className="font-bold text-slate-800 text-sm md:text-base flex items-center gap-2 justify-center md:justify-start">
             <Briefcase className="w-5 h-5 text-indigo-600" />
-            Meja Kerja Petugas Bidang Terkait
+            Meja Kerja: {actingDept === 'Kaur TU' ? 'Kaur Tata Usaha (TU)' : `Waka Bidang ${actingDept}`}
           </h3>
-          <p className="text-xs text-slate-400">Pilih Bidang Anda di bawah ini untuk mensimulasikan otorisasi penyelidikan Waka terkait</p>
-        </div>
-
-        <div className="flex items-center gap-2.5 shrink-0">
-          <span className="text-xs font-bold text-slate-500">Bertindak Sebagai:</span>
-          <select
-            value={actingDept}
-            onChange={(e: any) => {
-              setActingDept(e.target.value);
-              setActiveRespondId(null);
-            }}
-            className="border border-slate-200 bg-white px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            {departments.map((dept) => (
-              <option key={dept} value={dept}>{dept === 'Kaur TU' ? 'Kaur TU' : `Waka ${dept}`}</option>
-            ))}
-          </select>
+          <p className="text-xs text-slate-400">Selamat datang kembali, {user.name}. Menampilkan daftar laporan rujukan investigasi yang didisposisikan kepada Anda.</p>
         </div>
       </div>
 

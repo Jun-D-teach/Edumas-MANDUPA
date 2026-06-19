@@ -743,6 +743,31 @@ app.get('/api/logs', (req, res) => {
   res.json(store.logs || []);
 });
 
+function getDepartmentFromSubCategory(subCategory: string): Department {
+  switch (subCategory) {
+    case 'Pendaftaran & Layanan Akademik':
+    case 'Kalender Pendidikan & Ujian':
+      return 'Kurikulum';
+    case 'Fasilitas Kelas & Sarpras':
+    case 'Fasilitas Rusak / Sarpras Tidak Layak':
+    case 'Kualitas Makan / Kantin Madrasah':
+      return 'Sarana Prasarana';
+    case 'Kegiatan Ekstrakurikuler':
+    case 'Perundungan (Bullying / Cyber-bullying)':
+    case 'Kedisiplinan & Tata Tertib Siswa':
+      return 'Kesiswaan';
+    case 'Dana BOS & Sumbangan Komite':
+    case 'Pungutan Liar (Pungli)':
+      return 'Kaur TU';
+    case 'Kekerasan Fisik / Verbal oleh Staf/Siswa':
+    case 'Lainnya (Pelanggaran Kode Etik)':
+      return 'Keamanan';
+    case 'Lainnya':
+    default:
+      return 'Humas';
+  }
+}
+
 app.post('/api/complaints', async (req, res) => {
   const { pelaporName, pelaporEmail, category, subCategory, title, description, anonymous, supportingEvidence, supportingEvidenceName } = req.body;
 
@@ -789,6 +814,19 @@ app.post('/api/complaints', async (req, res) => {
     targetRole: 'admin',
     title: 'Ada Pengaduan Baru Masuk',
     message: `Pengaduan baru "${newComplaint.title}" (${newComplaint.category} - ${newComplaint.subCategory}) dengan No. Tiket ${newComplaint.ticketNumber} telah dikirimkan oleh pelapor ${newComplaint.pelaporName}. Silakan beralih ke panel untuk meninjau detail.`,
+    type: 'complaint',
+    complaintId: newComplaint.id
+  });
+
+  // Auto detect related department (Waka Bidang) based on subcategory
+  const estimatedDept = getDepartmentFromSubCategory(newComplaint.subCategory);
+
+  // Trigger Notifications for the related Department (Bidang)
+  await createNotification({
+    targetRole: 'bidang',
+    targetDept: estimatedDept,
+    title: `Notifikasi Laporan Masuk Terkait Bidang ${estimatedDept}`,
+    message: `Laporan baru bertema "${newComplaint.title}" (${newComplaint.category} - ${newComplaint.subCategory}) dengan No. Tiket ${newComplaint.ticketNumber} telah diterima. Laporan ini dideteksi relevan dengan bidang tugas Anda. Harap bersiap menunggu penelaahan dan disposisi tugas investigasi resmi dari Admin.`,
     type: 'complaint',
     complaintId: newComplaint.id
   });
