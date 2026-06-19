@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Send, Search, HelpCircle, Eye, EyeOff, ShieldAlert, Key, ClipboardList, Info, Loader2, ListTodo } from 'lucide-react';
+import { Send, Search, HelpCircle, Eye, EyeOff, ShieldAlert, Key, ClipboardList, Info, Loader2, ListTodo, Paperclip, Trash2, Upload } from 'lucide-react';
 import { Complaint, User } from '../types.js';
 import { StatusBadge } from './RoleBadge.js';
 import { ComplaintDetailModal } from './ComplaintDetailModal.js';
@@ -33,6 +33,45 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
   const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successTicket, setSuccessTicket] = useState<string | null>(null);
+
+  // File evidence Upload states
+  const [evidenceBase64, setEvidenceBase64] = useState<string>('');
+  const [evidenceName, setEvidenceName] = useState<string>('');
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFileChange = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran berkas bukti dukung melebihi batas maksimal 5MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setEvidenceBase64(e.target.result as string);
+        setEvidenceName(file.name);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileChange(e.dataTransfer.files[0]);
+    }
+  };
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,7 +135,9 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
           subCategory,
           title,
           description,
-          anonymous
+          anonymous,
+          supportingEvidence: evidenceBase64 || undefined,
+          supportingEvidenceName: evidenceName || undefined
         })
       });
 
@@ -111,6 +152,8 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
       // Clear fields
       setTitle('');
       setDescription('');
+      setEvidenceBase64('');
+      setEvidenceName('');
       
       // Refresh database
       await onRefreshComplaints();
@@ -267,6 +310,66 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
                   className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   required
                 />
+              </div>
+
+              {/* Optional Supporting Evidence Upload */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Bukti Dukung (Opsional)
+                </label>
+                <div
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-4 transition-all flex flex-col items-center justify-center text-center text-xs ${
+                    dragActive
+                      ? 'border-emerald-500 bg-emerald-50/50'
+                      : 'border-slate-200 hover:border-emerald-400 bg-slate-50/50 hover:bg-slate-50'
+                  }`}
+                >
+                  <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                  {evidenceName ? (
+                    <div className="space-y-1.5 w-full">
+                      <div className="flex items-center justify-center gap-1.5 text-slate-800 font-bold">
+                        <Paperclip className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="truncate max-w-[250px]">{evidenceName}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEvidenceBase64('');
+                          setEvidenceName('');
+                        }}
+                        className="inline-flex items-center gap-1 text-[10px] text-rose-600 hover:text-rose-800 font-bold hover:underline cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" /> Hapus Berkas
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="font-semibold text-slate-600">
+                        Seret & lepas berkas ke sini, atau{' '}
+                        <label className="text-emerald-600 hover:text-emerald-850 underline cursor-pointer font-bold">
+                          pilih berkas
+                          <input
+                            type="file"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                handleFileChange(e.target.files[0]);
+                              }
+                            }}
+                            className="hidden"
+                            accept="image/*,application/pdf"
+                          />
+                        </label>
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Dukung Gambar atau PDF (Maks. 5MB)
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Anonymous Slider / Toggle */}

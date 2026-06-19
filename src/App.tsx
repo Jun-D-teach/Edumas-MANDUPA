@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { User, Complaint, UserRole } from './types.js';
+import { User, Complaint, UserRole, KMNotification } from './types.js';
 import { Header } from './components/Header.js';
 import { PelaporView } from './components/PelaporView.js';
 import { AdminView } from './components/AdminView.js';
@@ -24,7 +24,7 @@ export default function App() {
 
   // Authentication Switcher States
   const [showAuthCard, setShowAuthCard] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   
   // Auth Form Fields
   const [loginEmail, setLoginEmail] = useState('');
@@ -34,10 +34,70 @@ export default function App() {
   const [regPassword, setRegPassword] = useState('');
   const [regRole, setRegRole] = useState<UserRole>('pelapor');
 
+  // Forgot password form fields
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotOTP, setForgotOTP] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotSuccessMessage, setForgotSuccessMessage] = useState('');
+
+  // Change Password state (for logged-in profiles)
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changePasswordError, setChangePasswordError] = useState('');
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState('');
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<KMNotification[]>([]);
+
   // Verification overlay
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [sandboxOTP, setSandboxOTP] = useState<string | undefined>(undefined);
   const [authError, setAuthError] = useState('');
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications');
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.error('Error loading notifications:', err);
+    }
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    try {
+      const response = await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (response.ok) {
+        fetchNotifications();
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications/mark-all-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.ok) {
+        fetchNotifications();
+      }
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
+  };
 
   // Fetch complaints and GAS configurations
   const fetchComplaints = async () => {
@@ -87,10 +147,17 @@ export default function App() {
   useEffect(() => {
     const initialize = async () => {
       setLoading(true);
-      await Promise.all([fetchComplaints(), fetchStatus()]);
+      await Promise.all([fetchComplaints(), fetchStatus(), fetchNotifications()]);
       setLoading(false);
     };
     initialize();
+
+    // Polling complaints and notifications for dual-session/real-time feel
+    const interval = setInterval(() => {
+      fetchComplaints();
+      fetchNotifications();
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // Update simulator view whenever user logs in or registers successfully
@@ -165,6 +232,93 @@ export default function App() {
     clearAuthForms();
   };
 
+  const handleForgotRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const response = await fetch('/api/auth/forgot-password-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setForgotStep(2);
+        if (data.sandboxOTP) {
+          setSandboxOTP(data.sandboxOTP);
+        }
+        setForgotSuccessMessage('Kode OTP pemulihan kata sandi Anda berhasil disalurkan ke kotak masuk email Anda!');
+      } else {
+        setAuthError(data.error || 'Email tidak terdaftar atau gagal mengirim OTP.');
+      }
+    } catch (err) {
+      setAuthError('Gagal terkoneksi ke server.');
+    }
+  };
+
+  const handleForgotResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setForgotSuccessMessage('');
+
+    try {
+      const response = await fetch('/api/auth/forgot-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, code: forgotOTP, newPassword: forgotNewPassword })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setForgotStep(1);
+        setAuthMode('login');
+        setForgotSuccessMessage('Sandi Baru berhasil disetel! Silakan masuk kembali memakai kata sandi baru Anda.');
+        setForgotOTP('');
+        setForgotNewPassword('');
+        setForgotEmail('');
+      } else {
+        setAuthError(data.error || 'Gagal mengubah kata sandi.');
+      }
+    } catch (err) {
+      setAuthError('Gagal melakukan setel ulang kata sandi.');
+    }
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePasswordError('');
+    setChangePasswordSuccess('');
+
+    if (newPassword !== confirmNewPassword) {
+      setChangePasswordError('Konfirmasi kata sandi baru tidak sesuai.');
+      return;
+    }
+
+    if (!user) return;
+
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, oldPassword: currentPassword, newPassword: newPassword })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setChangePasswordSuccess('Sandi Anda sukses diperbarui! Gunakan sandi baru Anda untuk autentikasi selanjutnya.');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setTimeout(() => {
+          setShowChangePasswordModal(false);
+          setChangePasswordSuccess('');
+        }, 3000);
+      } else {
+        setChangePasswordError(data.error || 'Gagal merubah kata sandi.');
+      }
+    } catch (err) {
+      setChangePasswordError('Terjadi kegagalan transmisi.');
+    }
+  };
+
   const clearAuthForms = () => {
     setLoginEmail('');
     setLoginPassword('');
@@ -172,6 +326,11 @@ export default function App() {
     setRegEmail('');
     setRegPassword('');
     setRegRole('pelapor');
+    setForgotEmail('');
+    setForgotOTP('');
+    setForgotNewPassword('');
+    setForgotStep(1);
+    setForgotSuccessMessage('');
     setAuthError('');
   };
 
@@ -326,6 +485,10 @@ export default function App() {
         simulatedRole={simulatedRole}
         onSelectSimulatedRole={setSimulatedRole}
         hasGAS={hasGAS}
+        onChangePasswordClick={() => setShowChangePasswordModal(true)}
+        notifications={notifications}
+        onMarkNotificationRead={handleMarkNotificationRead}
+        onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
       />
 
       {/* Primary Container App */}
@@ -433,8 +596,14 @@ export default function App() {
               <div className="bg-white border-2 border-slate-250 rounded-2xl p-6 shadow-sm max-w-md mx-auto relative animate-fade-in" id="auth-panel">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
                   <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                    {authMode === 'login' ? <LogIn className="w-4.5 h-4.5 text-emerald-600" /> : <UserPlus className="w-4.5 h-4.5 text-emerald-600" />}
-                    {authMode === 'login' ? 'Masuk ke Akun' : 'Registrasi Akun Baru'}
+                    {authMode === 'login' ? (
+                      <LogIn className="w-4.5 h-4.5 text-emerald-600" />
+                    ) : authMode === 'register' ? (
+                      <UserPlus className="w-4.5 h-4.5 text-emerald-600" />
+                    ) : (
+                      <Key className="w-4.5 h-4.5 text-emerald-600" />
+                    )}
+                    {authMode === 'login' ? 'Masuk ke Akun' : authMode === 'register' ? 'Registrasi Akun Baru' : 'Atur Ulang Kata Sandi'}
                   </h3>
                   <button
                     onClick={() => {
@@ -447,9 +616,9 @@ export default function App() {
                   </button>
                 </div>
 
-                {authError && (
-                  <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-xs text-center mb-4">
-                    ⚠️ {authError}
+                {forgotSuccessMessage && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800 text-xs text-center mb-4 font-bold">
+                    ✔️ {forgotSuccessMessage}
                   </div>
                 )}
 
@@ -467,7 +636,22 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-500 font-bold mb-1.5">Sandi Masuk (Gunakan Sandi Keamanan Akun)</label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-slate-500 font-bold mb-0">Sandi Masuk (Gunakan Sandi Keamanan Akun)</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthMode('forgot');
+                            setForgotStep(1);
+                            setForgotEmail(loginEmail);
+                            setAuthError('');
+                            setForgotSuccessMessage('');
+                          }}
+                          className="text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
+                        >
+                          Lupa Sandi?
+                        </button>
+                      </div>
                       <input
                         type="password"
                         placeholder="Sandi keamanan Anda..."
@@ -503,6 +687,7 @@ export default function App() {
                         onClick={() => {
                           setAuthMode('register');
                           setAuthError('');
+                          setForgotSuccessMessage('');
                         }}
                         className="text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
                       >
@@ -510,7 +695,7 @@ export default function App() {
                       </button>
                     </div>
                   </form>
-                ) : (
+                ) : authMode === 'register' ? (
                   <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
                     <div>
                       <label className="block text-slate-500 font-bold mb-1.5">Nama Lengkap Anda</label>
@@ -583,6 +768,113 @@ export default function App() {
                       </button>
                     </div>
                   </form>
+                ) : (
+                  forgotStep === 1 ? (
+                    <form onSubmit={handleForgotRequest} className="space-y-4 text-xs font-semibold">
+                      <p className="text-slate-500 mb-2 leading-relaxed">
+                        Masukkan email Anda. Kami akan mendistribusikan kode 6 digit OTP pemulihan sandi secara otomatis.
+                      </p>
+                      <div>
+                        <label className="block text-slate-500 font-bold mb-1.5">Email Terdaftar</label>
+                        <input
+                          type="email"
+                          placeholder="contoh: budi@siswa.sch.id / warga@gmail.com"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                          required
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
+                      >
+                        Kirim Kode Pemulihan
+                      </button>
+
+                      <div className="text-center pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthMode('login');
+                            setAuthError('');
+                            setForgotSuccessMessage('');
+                          }}
+                          className="text-emerald-750 hover:text-emerald-950 font-bold hover:underline cursor-pointer"
+                        >
+                          Kembali Ke Halaman Login
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleForgotResetSubmit} className="space-y-4 text-xs font-semibold">
+                      <p className="text-slate-500 mb-2 leading-relaxed font-medium">
+                        Masukkan kode OTP pelindung beserta Kata Sandi Baru Anda di bawah ini:
+                      </p>
+                      {sandboxOTP && (
+                        <div className="p-3.5 bg-amber-50 border border-amber-250 rounded-2xl text-amber-800 text-xs text-left shadow-xs">
+                          <p className="font-bold flex items-center gap-1 text-[11px] text-amber-900">⚡ Kode OTP Pemulihan (Sandbox):</p>
+                          <p className="font-mono text-center text-lg font-black tracking-widest text-amber-950 my-1 select-all">{sandboxOTP}</p>
+                          <p className="text-[10px] text-amber-600">Gunakan kode ini jika SMTP / Apps Script tidak diaktifkan.</p>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-slate-500 font-bold mb-1.5 font-mono text-[10px]">6 DIGIT OTP VERIFIKASI PEMULIHAN</label>
+                        <input
+                          type="text"
+                          placeholder="______"
+                          value={forgotOTP}
+                          onChange={(e) => setForgotOTP(e.target.value)}
+                          maxLength={6}
+                          className="w-full border border-slate-200 rounded-lg p-2.5 text-center font-extrabold tracking-widest text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-500 font-bold mb-1.5">Kata Sandi Baru</label>
+                        <input
+                          type="password"
+                          placeholder="Minimal 6 karakter sandi baru..."
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
+                      >
+                        Perbarui Kata Sandi Akun
+                      </button>
+
+                      <div className="flex items-center justify-between text-center pt-2 font-bold text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForgotStep(1);
+                            setForgotSuccessMessage('');
+                            setAuthError('');
+                          }}
+                          className="text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
+                        >
+                          Minta Code Baru?
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthMode('login');
+                            setForgotStep(1);
+                            setForgotSuccessMessage('');
+                            setAuthError('');
+                          }}
+                          className="text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+                        >
+                          Masuk Portal
+                        </button>
+                      </div>
+                    </form>
+                  )
                 )}
               </div>
             )}
@@ -599,6 +891,105 @@ export default function App() {
           onSuccess={handleVerificationSuccess}
           onClose={() => setVerifyEmail(null)}
         />
+      )}
+
+      {/* Change Password Modal Dashboard popup */}
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in" id="change-password-modal-container">
+          <div className="bg-white border text-left border-slate-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative animate-up" id="change-password-modal-body">
+            <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
+              <h3 className="font-bold text-xs tracking-wide flex items-center gap-2">
+                <Key className="w-4 h-4 text-emerald-400" />
+                GANTI KATA SANDI AKUN
+              </h3>
+              <button
+                onClick={() => {
+                  setShowChangePasswordModal(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmNewPassword('');
+                  setChangePasswordError('');
+                  setChangePasswordSuccess('');
+                }}
+                className="text-slate-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePasswordSubmit} className="p-5 space-y-4 text-xs font-medium">
+              {changePasswordError && (
+                <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-[11px] text-center">
+                  ⚠️ {changePasswordError}
+                </div>
+              )}
+              {changePasswordSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800 text-[11px] text-center font-bold">
+                  ✔️ {changePasswordSuccess}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1.5">Kata Sandi Lama</label>
+                <input
+                  type="password"
+                  placeholder="Masukkan sandi saat ini..."
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1.5">Kata Sandi Baru</label>
+                <input
+                  type="password"
+                  placeholder="Password baru (Min. 6 huruf)..."
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1.5">Konfirmasi Kata Sandi Baru</label>
+                <input
+                  type="password"
+                  placeholder="Ulangi password baru..."
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePasswordModal(false);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                    setChangePasswordError('');
+                    setChangePasswordSuccess('');
+                  }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-lg text-center transition-colors cursor-pointer border border-slate-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg text-center transition-colors cursor-pointer shadow-md"
+                >
+                  Perbarui Sandi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Institutional Footer */}

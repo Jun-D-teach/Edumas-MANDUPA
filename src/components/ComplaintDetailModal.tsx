@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, User, EyeOff, LayoutList, MessageSquare, History, ArrowRight } from 'lucide-react';
+import { X, Calendar, User, EyeOff, LayoutList, MessageSquare, History, ArrowRight, Paperclip } from 'lucide-react';
 import { Complaint, ActivityLog } from '../types.js';
 import { StatusBadge } from './RoleBadge.js';
 
@@ -115,10 +115,53 @@ export const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({ comp
           {/* Description */}
           <div className="space-y-2">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Uraian / Kronologi Kejadian</h4>
-            <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed select-all">
+            <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl text-sm text-slate-700 whitespace-pre-wrap leading-relaxed select-all border-l-4 border-emerald-600">
               {complaint.description}
             </div>
           </div>
+
+          {/* Supporting Evidence Field */}
+          {complaint.supportingEvidence && (
+            <div className="space-y-2 animate-fade-in">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bukti Dukung Tersisip (Opsional)</h4>
+              <div className="p-4 bg-slate-50 border border-slate-250 rounded-2xl text-xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-lg">
+                    <Paperclip className="w-4 h-4 shrink-0" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-slate-700 block truncate leading-tight">
+                      {complaint.supportingEvidenceName || 'bukti-dukung-dokumen'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">Lampiran Pelapor</span>
+                  </div>
+                </div>
+                
+                {/* Image preview support */}
+                {complaint.supportingEvidence.startsWith('data:image/') ? (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-w-sm max-h-[220px] bg-slate-900 flex items-center justify-center">
+                    <img
+                      src={complaint.supportingEvidence}
+                      alt="Pratinjau Bukti Dukung"
+                      className="max-w-full max-h-[220px] object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                ) : null}
+
+                {/* Download option */}
+                <div className="pt-1.5">
+                  <a
+                    href={complaint.supportingEvidence}
+                    download={complaint.supportingEvidenceName || 'bukti-dukung'}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-850 hover:bg-slate-955 text-white font-bold rounded-lg shadow-sm transition-colors text-[10px] cursor-pointer"
+                  >
+                    Unduh / Buka Berkas Lampiran
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Department Assignee (if forwarded) */}
           {complaint.assignedDepartment && (

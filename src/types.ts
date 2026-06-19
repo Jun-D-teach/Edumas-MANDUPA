@@ -23,6 +23,8 @@ export interface User {
   isVerified: boolean;
   password?: string;
   verificationCode?: string;
+  resetCode?: string;
+  whatsappNumber?: string;
   createdAt: string;
 }
 
@@ -41,6 +43,8 @@ export interface Complaint {
   departmentResponse?: string; // Tanggapan draf dari Bidang Terkait
   finalAnswer?: string; // Tanggapan akhir yang dikonfirmasi Admin dan dirilis
   assignedDepartment?: Department; // Bidang Terkait yang ditunjuk
+  supportingEvidence?: string; // Optional base64-encoded supporting file/document
+  supportingEvidenceName?: string; // Optional supporting file name
   createdAt: string;
   updatedAt: string;
 }
@@ -57,4 +61,19 @@ export interface ActivityLog {
 
 export interface GASConfig {
   url: string;
+}
+
+export interface KMNotification {
+  id: string;
+  userId?: string;          // Target user ID (optional)
+  targetRole?: UserRole;    // Group check (e.g. notify all admin, ketuatim, or bidang)
+  targetDept?: Department;  // Direct department targeting
+  title: string;
+  message: string;
+  type: 'info' | 'complaint' | 'status_change';
+  complaintId?: string;
+  read: boolean;
+  createdAt: string;
+  sentEmail?: boolean;
+  sentWA?: boolean;
 }

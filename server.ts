@@ -6,8 +6,9 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
-import { User, Complaint, ActivityLog, UserRole, Department, ComplaintStatus } from './src/types.js';
+import { User, Complaint, ActivityLog, UserRole, Department, ComplaintStatus, KMNotification } from './src/types.js';
 
 const app = express();
 const PORT = 3000;
@@ -20,6 +21,7 @@ interface DataStore {
   users: User[];
   complaints: Complaint[];
   logs: ActivityLog[];
+  notifications?: KMNotification[];
   gasUrl: string;
 }
 
@@ -186,6 +188,7 @@ function initDataStore(): DataStore {
       if (!loaded.users) loaded.users = defaultUsers;
       if (!loaded.complaints) loaded.complaints = defaultComplaints;
       if (!loaded.logs) loaded.logs = defaultLogs;
+      if (!loaded.notifications) loaded.notifications = [];
       if (loaded.gasUrl === undefined) loaded.gasUrl = process.env.GOOGLE_SCRIPT_URL || '';
       return loaded;
     }
@@ -197,6 +200,7 @@ function initDataStore(): DataStore {
     users: defaultUsers,
     complaints: defaultComplaints,
     logs: defaultLogs,
+    notifications: [],
     gasUrl: process.env.GOOGLE_SCRIPT_URL || ''
   };
   fs.writeFileSync(DATA_FILE, JSON.stringify(initialStore, null, 2), 'utf-8');
@@ -211,6 +215,130 @@ function saveStore() {
   } catch (err) {
     console.error('Failed to save store to file:', err);
   }
+}
+
+// Helper to send email via SMTP or fallback
+async function sendNotificationEmail(toEmail: string, subject: string, htmlContent: string): Promise<boolean> {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (user && pass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: {
+          user,
+          pass,
+        },
+      });
+      await transporter.sendMail({
+        from: `"EDUMAS MAN 2 Palembang" <${user}>`,
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+      console.log(`Email successfully sent to ${toEmail} via Nodemailer SMTP!`);
+      return true;
+    } catch (e) {
+      console.error(`Failed to send email to ${toEmail} via SMTP:`, e);
+    }
+  }
+
+  console.log(`[Notification Sim] Email to ${toEmail}: Subject: [${subject}]. Content: ${htmlContent.substring(0, 100)}...`);
+  return false;
+}
+
+async function sendNotificationWhatsApp(number: string, text: string): Promise<boolean> {
+  const url = process.env.WHATSAPP_WEBHOOK_URL;
+  if (url) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: number, message: text }),
+      });
+      if (response.ok) {
+        console.log(`WhatsApp notification successfully dispatched to ${number}`);
+        return true;
+      }
+    } catch (e) {
+      console.error(`WhatsApp webhook delivery failed to ${number}:`, e);
+    }
+  }
+  console.log(`[Notification Sim] WhatsApp to ${number}: "${text}"`);
+  return false;
+}
+
+async function createNotification(params: {
+  userId?: string;
+  targetRole?: UserRole;
+  targetDept?: Department;
+  title: string;
+  message: string;
+  type: 'info' | 'complaint' | 'status_change';
+  complaintId?: string;
+}) {
+  const notification: KMNotification = {
+    id: 'n-' + Math.random().toString(36).substr(2, 9),
+    ...params,
+    read: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (!store.notifications) {
+    store.notifications = [];
+  }
+  store.notifications.push(notification);
+
+  // Determine who to notify
+  const targetUsers = store.users.filter((u) => {
+    if (params.userId && u.id === params.userId) return true;
+    if (params.targetRole && u.role === params.targetRole) {
+      if (params.targetRole === 'bidang' && params.targetDept) {
+        return u.name.toLowerCase().includes(params.targetDept.toLowerCase());
+      }
+      return true;
+    }
+    return false;
+  });
+
+  const emailPromises = targetUsers.map(async (u) => {
+    if (!u.email) return;
+    const bodyHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; color: #1e293b;">
+        <h2 style="color: #047857; margin-top: 0; font-weight: 800;">EDUMAS MAN 2 Kota Palembang</h2>
+        <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: bold; margin-bottom: 12px;">Sistem Informasi Layanan Pengaduan Resmi</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
+        <h3 style="color: #0f172a; font-size: 17px; margin-bottom: 8px; font-weight: 800;">${params.title}</h3>
+        <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 16px;">${params.message}</p>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 13px;">
+          <strong style="color: #047857; text-transform: uppercase; font-size: 11px; display: block; margin-bottom: 6px;">Detail Sistem / Pelacakan:</strong>
+          • <b>Tanggal Event:</b> ${new Date().toLocaleString('id-ID')} WIB<br/>
+          • <b>Kanal Informasi:</b> EDUMAS Online Real-Time<br/>
+          • <b>Jenis:</b> ${params.type.toUpperCase()}
+        </div>
+        <p style="font-size: 11px; color: #94a3b8; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+          Ini adalah surel otomatis dari EDUMAS Kawal Madrasah MAN 2 Palembang. Harap tidak membalas email ini secara langsung. Untuk melakukan investigasi / tanggapan, silakan login ke portal resmi.
+        </p>
+      </div>
+    `;
+    const sent = await sendNotificationEmail(u.email, `[EDUMAS MAN 2] ${params.title}`, bodyHtml);
+    if (sent) notification.sentEmail = true;
+  });
+
+  const waPromises = targetUsers.map(async (u) => {
+    const phone = u.whatsappNumber || (u.role === 'admin' ? '081234567890' : u.role === 'bidang' ? '085388889999' : '089876543210');
+    const waText = `*[EDUMAS MAN 2 PALEMBANG]*\n\n📢 *${params.title}*\n\n${params.message}\n\n_Waktu: ${new Date().toLocaleString('id-ID')} WIB_\n\n_Silakan akses dashboard EDUMAS untuk respons penanganan._`;
+    const sent = await sendNotificationWhatsApp(phone, waText);
+    if (sent) notification.sentWA = true;
+  });
+
+  await Promise.all([...emailPromises, ...waPromises]);
+  saveStore();
 }
 
 // REST helper to sync with Google Apps Script
@@ -422,6 +550,108 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ success: true, user });
 });
 
+// Password & Notification Routes
+
+app.post('/api/auth/change-password', (req, res) => {
+  const { email, oldPassword, newPassword } = req.body;
+  if (!email || !oldPassword || !newPassword) {
+    return res.status(400).json({ error: 'Kredensial tidak lengkap.' });
+  }
+  const user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+  if (!user) {
+    return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
+  }
+  const expectedPassword = user.password || 'man2plg123';
+  if (oldPassword !== expectedPassword) {
+    return res.status(400).json({ error: 'Kata sandi lama salah.' });
+  }
+  user.password = newPassword;
+  saveStore();
+  return res.json({ success: true, message: 'Kata sandi berhasil diubah.' });
+});
+
+app.post('/api/auth/forgot-password-request', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email wajib diisi.' });
+  }
+  const user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+  if (!user) {
+    return res.status(404).json({ error: 'Alamat email tidak terdaftar di sistem.' });
+  }
+
+  // Generate 6 digit reset code
+  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+  user.resetCode = resetCode;
+  saveStore();
+
+  // Send email if configured, or fallback
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; color: #1e293b;">
+      <h2 style="color: #047857; margin-top: 0; font-weight: 800;">Pemulihan Kata Sandi Akun - EDUMAS MAN 2</h2>
+      <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: bold; margin-bottom: 12px;">Dinas Layanan Pengaduan Madrasah Unggulan</p>
+      <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
+      <p style="font-size: 14px; color: #475569;">Yth. Bapak/Ibu/Sdr/i <b>${user.name}</b>,</p>
+      <p style="font-size: 14px; color: #475569;">Kami menerima permintaan pengaturan ulang kata sandi. Silakan gunakan Kode OTP pemulihan di bawah ini untuk mengisi formulir reset sandi Anda:</p>
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; text-align: center; padding: 18px; border-radius: 8px; margin: 20px 0;">
+        <span style="font-size: 32px; font-weight: 900; letter-spacing: 0.3em; color: #166534; font-family: monospace;">${resetCode}</span>
+      </div>
+      <p style="font-size: 12px; color: #ef4444; font-weight: bold; margin-bottom: 4px;">Penting:</p>
+      <p style="font-size: 12px; color: #64748b; margin-top: 0; line-height: 1.5;">Jangan bagikan kode OTP ini ke siapapun termasuk staf EDUMAS. Kode Anda berlaku selama 30 menit. Jika ini bukan tindakan Anda, silakan ubah kata sandi lama atau abaikan pesan ini.</p>
+    </div>
+  `;
+  await sendNotificationEmail(user.email, '[EDUMAS MAN 2] Atur Ulang Kata Sandi Akun', htmlContent);
+
+  return res.json({
+    success: true,
+    message: 'Kode OTP pemulihan kata sandi telah dikirim ke email.',
+    sandboxOTP: resetCode
+  });
+});
+
+app.post('/api/auth/forgot-password-reset', (req, res) => {
+  const { email, code, newPassword } = req.body;
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Kredensial reset tidak lengkap.' });
+  }
+  const user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+  if (!user) {
+    return res.status(404).json({ error: 'User tidak terdaftar.' });
+  }
+  if (!user.resetCode || user.resetCode !== code.trim()) {
+    return res.status(400).json({ error: 'Kode OTP pemulihan salah / kadaluarsa.' });
+  }
+
+  user.password = newPassword;
+  delete user.resetCode;
+  saveStore();
+  return res.json({ success: true, message: 'Kata sandi berhasil diperbarui.' });
+});
+
+app.get('/api/notifications', (req, res) => {
+  res.json(store.notifications || []);
+});
+
+app.post('/api/notifications/mark-read', (req, res) => {
+  const { id } = req.body;
+  if (store.notifications) {
+    const ni = store.notifications.find(n => n.id === id);
+    if (ni) {
+      ni.read = true;
+      saveStore();
+    }
+  }
+  res.json({ success: true });
+});
+
+app.post('/api/notifications/mark-all-read', (req, res) => {
+  if (store.notifications) {
+    store.notifications.forEach(n => { n.read = true; });
+    saveStore();
+  }
+  res.json({ success: true });
+});
+
 // Complaints Routes
 
 app.get('/api/complaints', (req, res) => {
@@ -440,7 +670,7 @@ app.get('/api/logs', (req, res) => {
 });
 
 app.post('/api/complaints', async (req, res) => {
-  const { pelaporName, pelaporEmail, category, subCategory, title, description, anonymous } = req.body;
+  const { pelaporName, pelaporEmail, category, subCategory, title, description, anonymous, supportingEvidence, supportingEvidenceName } = req.body;
 
   if (!title || !description || !category || !subCategory) {
     return res.status(400).json({ error: 'Kelengkapan aduan (Kategori, Sub Kategori, Judul, Keterangan) harus diisi.' });
@@ -459,6 +689,8 @@ app.post('/api/complaints', async (req, res) => {
     description,
     anonymous: !!anonymous,
     status: 'PENDING',
+    supportingEvidence,
+    supportingEvidenceName,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -477,6 +709,15 @@ app.post('/api/complaints', async (req, res) => {
 
   store.logs.push(newLog);
   saveStore();
+
+  // Trigger Notifications for Admin
+  await createNotification({
+    targetRole: 'admin',
+    title: 'Ada Pengaduan Baru Masuk',
+    message: `Pengaduan baru "${newComplaint.title}" (${newComplaint.category} - ${newComplaint.subCategory}) dengan No. Tiket ${newComplaint.ticketNumber} telah dikirimkan oleh pelapor ${newComplaint.pelaporName}. Silakan beralih ke panel untuk meninjau detail.`,
+    type: 'complaint',
+    complaintId: newComplaint.id
+  });
 
   // Sync to GAS sheets
   await syncToGAS('addComplaint', { complaint: newComplaint, log: newLog });
@@ -551,6 +792,86 @@ app.post('/api/complaints/:id/action', async (req, res) => {
 
   store.logs.push(newLog);
   saveStore();
+
+  // Dispatch Role & Pelapor-specific Notifications
+  try {
+    switch (action) {
+      case 'KLASIFIKASI_JAWAB_INFO':
+        if (complaint.pelaporEmail) {
+          await createNotification({
+            title: 'Jawaban Langsung Informasi Dirilis',
+            message: `Halo ${complaint.pelaporName || 'Pelapor'}, pengaduan informasi Anda dengan No. Tiket: ${complaint.ticketNumber} ("${complaint.title}") telah dijawab oleh Admin: "${complaint.directInfoAnswer}"`,
+            type: 'status_change',
+            complaintId: complaint.id,
+            userId: store.users.find((u) => u.email.toLowerCase() === complaint.pelaporEmail.toLowerCase())?.id,
+          });
+        }
+        break;
+
+      case 'KLASIFIKASI_TERUSKAN':
+        await createNotification({
+          targetRole: 'bidang',
+          targetDept: complaint.assignedDepartment,
+          title: `Disposisi Pengaduan Baru: Bidang ${complaint.assignedDepartment}`,
+          message: `Pengaduan baru No. Tiket ${complaint.ticketNumber} ("${complaint.title}") telah didisposisikan ke Bidang ${complaint.assignedDepartment}. Silakan lakukan investigasi lapangan dan berikan draf respons tanggapan.`,
+          type: 'complaint',
+          complaintId: complaint.id,
+        });
+        break;
+
+      case 'INPUT_TANGGAPAN_BIDANG':
+        await createNotification({
+          targetRole: 'ketuatim',
+          title: `Draf Tanggapan Bidang ${complaint.assignedDepartment} Masuk`,
+          message: `Bidang ${complaint.assignedDepartment} selesai merespons Pengaduan No. Tiket ${complaint.ticketNumber} (${complaint.title}). Harap Ketua Tim segera meninjau dan menyetujui tanggapan ini.`,
+          type: 'status_change',
+          complaintId: complaint.id,
+        });
+        await createNotification({
+          targetRole: 'admin',
+          title: `Draf Tanggapan Bidang ${complaint.assignedDepartment} Masuk`,
+          message: `Bidang ${complaint.assignedDepartment} telah merespons Pengaduan No. Tiket ${complaint.ticketNumber}. Status menunggu evaluasi Ketua Tim.`,
+          type: 'status_change',
+          complaintId: complaint.id,
+        });
+        break;
+
+      case 'SETUJUI_KETUA_TIM':
+        await createNotification({
+          targetRole: 'admin',
+          title: 'Format Tanggapan Disetujui Ketua Tim',
+          message: `Ketua Tim telah menyetujui draf investigasi untuk No. Tiket ${complaint.ticketNumber} ("${complaint.title}"). Silakan Admin rilis tanggapan resmi.`,
+          type: 'status_change',
+          complaintId: complaint.id,
+        });
+        break;
+
+      case 'TOLAK_KETUA_TIM':
+        await createNotification({
+          targetRole: 'bidang',
+          targetDept: complaint.assignedDepartment,
+          title: 'Draf Tanggapan Ditolak / Direvisi',
+          message: `Draf tanggapan Bidang ${complaint.assignedDepartment} untuk No. Tiket ${complaint.ticketNumber} ("${complaint.title}") ditolak Ketua Tim dengan catatan: "${notes || 'Memerlukan investigasi lebih lanjut.'}". Harap direvisi secepatnya.`,
+          type: 'status_change',
+          complaintId: complaint.id,
+        });
+        break;
+
+      case 'FINALISASI_ADMIN':
+        if (complaint.pelaporEmail) {
+          await createNotification({
+            title: 'Tanggapan Resmi Pengaduan Dirilis!',
+            message: `Yth. ${complaint.pelaporName || 'Pelapor'}, pengaduan Anda No. Tiket ${complaint.ticketNumber} ("${complaint.title}") telah selesai ditangani. Jawaban resmi: "${complaint.finalAnswer}". Terima kasih telah turut mengawal lingkungan madrasah kami.`,
+            type: 'status_change',
+            complaintId: complaint.id,
+            userId: store.users.find((u) => u.email.toLowerCase() === complaint.pelaporEmail.toLowerCase())?.id,
+          });
+        }
+        break;
+    }
+  } catch (err) {
+    console.error('Failed to trigger state action notifications:', err);
+  }
 
   // Sync to GAS sheets
   await syncToGAS('updateComplaint', { complaint, log: newLog });

@@ -33,6 +33,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   // Report configurations state
   const [reportStatus, setReportStatus] = useState<'ALL' | 'PENDING' | 'PROSES' | 'SELESAI'>('ALL');
   const [reportFilterType, setReportFilterType] = useState<'MONTH' | 'RANGE'>('MONTH');
+  const [reportLayout, setReportLayout] = useState<'DETAIL' | 'TABLE'>('DETAIL');
   
   const currentDate = new Date();
   const currentMonthStr = String(currentDate.getMonth() + 1).padStart(2, '0');
@@ -644,6 +645,30 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 <p className="text-[11px] text-slate-400 mt-0.5">Saring data sesuai status aduan & tanggal/bulan masuk</p>
               </div>
 
+              {/* Format Tampilan Selector */}
+              <div className="space-y-2 bg-emerald-50/45 border border-emerald-100 p-3.5 rounded-xl">
+                <label className="block text-xs font-bold text-emerald-950 flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                  Format Tata Letak Cetak:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReportLayout('DETAIL')}
+                    className={`p-2 rounded-lg border text-[11px] text-center font-bold transition-all cursor-pointer ${reportLayout === 'DETAIL' ? 'border-emerald-600 bg-white text-emerald-800 shadow-xs' : 'border-slate-200 bg-white/40 hover:bg-white text-slate-600'}`}
+                  >
+                    Detail Rinci Laporan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportLayout('TABLE')}
+                    className={`p-2 rounded-lg border text-[11px] text-center font-bold transition-all cursor-pointer ${reportLayout === 'TABLE' ? 'border-emerald-600 bg-white text-emerald-800 shadow-xs' : 'border-slate-200 bg-white/40 hover:bg-white text-slate-600'}`}
+                  >
+                    Tabel Rekapitulasi
+                  </button>
+                </div>
+              </div>
+
               {/* Status Filter */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700">Filter Status Aduan:</label>
@@ -886,11 +911,65 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   </div>
                 </div>
 
-                {/* THE COMPLETE LIST OF PRINTABLE DOSSIERS */}
+                 {/* THE COMPLETE LIST OF PRINTABLE DOSSIERS OR SUMMARY TABLE */}
                 <div className="space-y-6">
                   {getFilteredComplaintsForReport().length === 0 ? (
                     <div className="text-center py-12 border border-dashed border-slate-200 text-slate-400 text-xs rounded-xl font-medium">
                       Negasi Hasil: Tidak ada data aduan yang cocok dengan variabel filter di samping.
+                    </div>
+                  ) : reportLayout === 'TABLE' ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-[11px] border-collapse border border-slate-350 bg-white">
+                        <thead>
+                          <tr className="bg-slate-100/80 border-b-2 border-slate-350">
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800 text-center w-10">No</th>
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800">Kode Lapor</th>
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800">Pelapor</th>
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800">Metodologi Laporan</th>
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800">Topik & Judul Rekap</th>
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800 text-center">Bidang Terkait</th>
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800 text-center">Status Laporan</th>
+                            <th className="p-3 border border-slate-350 font-extrabold text-slate-800 text-center">Tanggal Masuk</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getFilteredComplaintsForReport().map((c, idx) => (
+                            <tr key={c.id} className="hover:bg-slate-50/40 border-b border-slate-250 page-break-inside-avoid">
+                              <td className="p-3 border border-slate-350 text-center font-bold text-slate-650">{idx + 1}</td>
+                              <td className="p-3 border border-slate-350 font-mono font-bold text-slate-900 select-all">{c.ticketNumber}</td>
+                              <td className="p-3 border border-slate-350 font-semibold text-slate-800">
+                                {c.anonymous ? (
+                                  <span className="text-slate-450 italic font-medium">Sengaja Rahasia (Anonim)</span>
+                                ) : (
+                                  c.pelaporName
+                                )}
+                              </td>
+                              <td className="p-3 border border-slate-350 font-medium text-slate-700">{c.category}</td>
+                              <td className="p-3 border border-slate-350">
+                                <div className="font-extrabold text-slate-850">{c.subCategory}</div>
+                                <div className="text-[10px] text-slate-550 leading-relaxed mt-1 whitespace-pre-wrap">{c.title}</div>
+                              </td>
+                              <td className="p-3 border border-slate-350 text-center">
+                                {c.assignedDepartment ? (
+                                  <span className="font-bold text-indigo-900 bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded text-[10px]">
+                                    Waka {c.assignedDepartment}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 italic">-</span>
+                                )}
+                              </td>
+                              <td className="p-3 border border-slate-350 text-center">
+                                <span className={`font-mono font-bold uppercase text-[9px] px-2.5 py-1 rounded border inline-block whitespace-nowrap ${c.status === 'RESOLVED' || c.status === 'INFO_ANSWERED' ? 'bg-emerald-100 text-emerald-800 border-emerald-250' : c.status === 'PENDING' ? 'bg-amber-100 text-amber-800 border-amber-250' : 'bg-indigo-100 text-indigo-850 border-indigo-250'}`}>
+                                  {c.status}
+                                </span>
+                              </td>
+                              <td className="p-3 border border-slate-350 text-center font-medium text-slate-600 whitespace-nowrap">
+                                {new Date(c.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   ) : (
                     getFilteredComplaintsForReport().map((c, idx) => {
