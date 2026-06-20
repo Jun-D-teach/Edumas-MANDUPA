@@ -559,7 +559,7 @@ export function interceptFetch() {
 
     // 5. POST /api/complaints
     if (path === '/api/complaints' && method === 'POST') {
-      const { pelaporName, pelaporEmail, category, subCategory, title, description, anonymous } = bodyData || {};
+      const { pelaporName, pelaporEmail, category, subCategory, title, description, anonymous, supportingEvidence, supportingEvidenceName } = bodyData || {};
       
       const ticketNumber = 'KM-' + new Date().toISOString().slice(0,10).replace(/-/g, '') + '-' + Math.floor(100+Math.random()*900);
       const newComplaint: Complaint = {
@@ -573,13 +573,26 @@ export function interceptFetch() {
         description: description || '',
         anonymous: !!anonymous,
         status: 'PENDING',
+        supportingEvidence,
+        supportingEvidenceName,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
       const complaints = StorageManager.getComplaints();
       complaints.push(newComplaint);
-      StorageManager.setComplaints(complaints);
+      try {
+        StorageManager.setComplaints(complaints);
+      } catch (err) {
+        console.warn('Gagal menyimpan bukti foto ke localstorage. Hubungi admin atau gunakan file lebih kecil.');
+        newComplaint.supportingEvidence = undefined;
+        newComplaint.supportingEvidenceName = undefined;
+        try {
+          StorageManager.setComplaints(complaints);
+        } catch (innerErr) {
+          console.error('Sama sekali gagal menyimpan aduan ke localstorage', innerErr);
+        }
+      }
 
       const newLog: ActivityLog = {
         id: 'l-' + Math.random().toString(36).substr(2, 9),
@@ -587,17 +600,32 @@ export function interceptFetch() {
         actorName: anonymous ? 'Masyarakat' : pelaporName || 'Masyarakat',
         actorRole: 'pelapor',
         action: 'MEMBUAT_ADUAN',
-        notes: 'Pengaduan berhasil didaftarkan dengan Nomor Tiket: ' + ticketNumber,
+        notes: 'Pengaduan berhasil didaftarkan dengan Nomor Tiket: ' + ticketNumber + (supportingEvidence ? ' dengan lampiran bukti foto.' : ''),
         timestamp: new Date().toISOString()
       };
 
       const logs = StorageManager.getLogs();
       logs.push(newLog);
-      StorageManager.setLogs(logs);
+      try {
+        StorageManager.setLogs(logs);
+      } catch (e) {
+        console.error('Gagal mencatat log ke localstorage:', e);
+      }
 
       // Sync to GAS sheets
       if (gasUrl) {
-        await syncToGASDirect(gasUrl, 'addComplaint', { complaint: newComplaint, log: newLog });
+        const gasResult = await syncToGASDirect(gasUrl, 'addComplaint', { complaint: newComplaint, log: newLog });
+        if (gasResult && gasResult.success && gasResult.complaint && gasResult.complaint.supportingEvidence) {
+          newComplaint.supportingEvidence = gasResult.complaint.supportingEvidence;
+          
+          // Re-retrieve and save to clean our localStorage!
+          const cleanComplaints = StorageManager.getComplaints();
+          const targetIdx = cleanComplaints.findIndex(c => c.id === newComplaint.id);
+          if (targetIdx !== -1) {
+            cleanComplaints[targetIdx].supportingEvidence = gasResult.complaint.supportingEvidence;
+            StorageManager.setComplaints(cleanComplaints);
+          }
+        }
       }
 
       return new Response(JSON.stringify({ success: true, complaint: newComplaint }), {
@@ -683,7 +711,18 @@ export function interceptFetch() {
 
       // Sync to GAS sheets
       if (gasUrl) {
-        await syncToGASDirect(gasUrl, 'updateComplaint', { complaint, log: newLog });
+        const gasUpdateResult = await syncToGASDirect(gasUrl, 'updateComplaint', { complaint, log: newLog });
+        if (gasUpdateResult && gasUpdateResult.success && gasUpdateResult.complaint && gasUpdateResult.complaint.supportingEvidence) {
+          complaint.supportingEvidence = gasUpdateResult.complaint.supportingEvidence;
+          
+          // Re-retrieve and save to clean our localStorage!
+          const cleanComplaints = StorageManager.getComplaints();
+          const targetIdx = cleanComplaints.findIndex(c => c.id === complaint.id);
+          if (targetIdx !== -1) {
+            cleanComplaints[targetIdx].supportingEvidence = gasUpdateResult.complaint.supportingEvidence;
+            StorageManager.setComplaints(cleanComplaints);
+          }
+        }
       }
 
       return new Response(JSON.stringify({ success: true, complaint }), {

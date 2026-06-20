@@ -147,16 +147,23 @@ export const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({ comp
                       referrerPolicy="no-referrer"
                     />
                   </div>
+                ) : complaint.supportingEvidence.startsWith('http') ? (
+                  <div className="p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-100 flex items-center gap-2.5">
+                    <div className="w-2.5 h-2.5 bg-emerald-600 rounded-full shrink-0 animate-pulse" />
+                    <span className="text-xs font-semibold">Terkoneksi & Tersimpan Aman di Google Drive Anda</span>
+                  </div>
                 ) : null}
 
                 {/* Download option */}
                 <div className="pt-1.5">
                   <a
                     href={complaint.supportingEvidence}
-                    download={complaint.supportingEvidenceName || 'bukti-dukung'}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-850 hover:bg-slate-955 text-white font-bold rounded-lg shadow-sm transition-colors text-[10px] cursor-pointer"
+                    download={!complaint.supportingEvidence.startsWith('http') ? (complaint.supportingEvidenceName || 'bukti-dukung') : undefined}
+                    target={complaint.supportingEvidence.startsWith('http') ? '_blank' : undefined}
+                    rel={complaint.supportingEvidence.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-colors text-[10px] cursor-pointer"
                   >
-                    Unduh / Buka Berkas Lampiran
+                    {complaint.supportingEvidence.startsWith('http') ? 'Buka Berkas di Google Drive ↗' : 'Unduh / Buka Berkas Lampiran'}
                   </a>
                 </div>
               </div>

@@ -11,7 +11,7 @@ export const GASInstructions: React.FC = () => {
   const [showScript, setShowScript] = useState(false);
 
   const appsScriptCode = `/*
-  Kawal Madrasah - Google Apps Script Backend integration
+  Kawal Madrasah - Google Apps Script Backend integration with Google Drive Support
   Salin seluruh kode ini ke Google Apps Script (Extensions -> Apps Script pada Google Sheet Anda).
   Simpan kemudian Deploy sebagai Web App:
   1. Klik "Deploy" -> "New deployment"
@@ -22,7 +22,7 @@ export const GASInstructions: React.FC = () => {
 */
 
 function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({ status: "running", message: "Kawal Madrasah Apps Script Active." }))
+  return ContentService.createTextOutput(JSON.stringify({ status: "running", message: "Kawal Madrasah Apps Script Active dengan Dukungan Google Drive." }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -78,9 +78,16 @@ function initSheets() {
       "ID", "Nomor Tiket", "Nama Pelapor", "Email Pelapor", "Kategori", 
       "Sub Kategori", "Judul", "Keterangan", "Anonim", "Status", 
       "Jawaban Informasi Langsung", "Tanggapan Bidang", "Jawaban Akhir", 
-      "Bidang Terkait", "Tanggal Dibuat", "Tanggal Diupdate"
+      "Bidang Terkait", "Tanggal Dibuat", "Tanggal Diupdate", "Bukti Dukung", "Nama Bukti Dukung"
     ]);
-    compSheet.getRange("A1:P1").setFontWeight("bold").setBackground("#d1fae5");
+    compSheet.getRange("A1:R1").setFontWeight("bold").setBackground("#d1fae5");
+  } else {
+    // Pastikan kolom Bukti Dukung ada
+    var headers = compSheet.getRange(1, 1, 1, Math.min(compSheet.getLastColumn(), 22)).getValues()[0];
+    if (headers.indexOf("Bukti Dukung") === -1) {
+      compSheet.getRange(1, 17).setValue("Bukti Dukung").setFontWeight("bold").setBackground("#d1fae5");
+      compSheet.getRange(1, 18).setValue("Nama Bukti Dukung").setFontWeight("bold").setBackground("#d1fae5");
+    }
   }
   
   // Sheet Logs
@@ -149,10 +156,43 @@ function saveUserToSheet(user) {
   return jsonResponse({ success: true });
 }
 
+function uploadToDrive(base64DataUrl, fileName) {
+  if (!base64DataUrl || base64DataUrl.indexOf("base64,") === -1) {
+    return base64DataUrl || "";
+  }
+  try {
+    var parts = base64DataUrl.split("base64,");
+    var mimeType = parts[0].split(":")[1].split(";")[0];
+    var base64Data = parts[1];
+    var decoded = Utilities.base64Decode(base64Data);
+    var blob = Utilities.newBlob(decoded, mimeType, fileName || "bukti-laporan");
+    
+    // Create file
+    var file = DriveApp.createFile(blob);
+    
+    // Set file sharing as Anyone with Link can view
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    return file.getUrl();
+  } catch (err) {
+    return "Error Upload: " + err.toString();
+  }
+}
+
 function saveComplaintToSheet(complaint, log) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var compSheet = ss.getSheetByName("Complaints");
   
+  // Jika evidence dalam bentuk base64, unggah ke Google Drive terlebih dahulu
+  var evidenceUrl = complaint.supportingEvidence || "";
+  if (evidenceUrl && evidenceUrl.indexOf("base64,") > -1) {
+    var uploadedUrl = uploadToDrive(evidenceUrl, complaint.supportingEvidenceName);
+    if (uploadedUrl && !uploadedUrl.startsWith("Error")) {
+      evidenceUrl = uploadedUrl;
+      complaint.supportingEvidence = uploadedUrl; // ganti base64 dengan drive url
+    }
+  }
+
   compSheet.appendRow([
     complaint.id,
     complaint.ticketNumber,
@@ -169,7 +209,9 @@ function saveComplaintToSheet(complaint, log) {
     complaint.finalAnswer || "",
     complaint.assignedDepartment || "",
     complaint.createdAt,
-    complaint.updatedAt
+    complaint.updatedAt,
+    evidenceUrl,
+    complaint.supportingEvidenceName || ""
   ]);
   
   // Append log
@@ -184,7 +226,7 @@ function saveComplaintToSheet(complaint, log) {
     log.timestamp
   ]);
   
-  return jsonResponse({ success: true });
+  return jsonResponse({ success: true, complaint: complaint });
 }
 
 function updateComplaintInSheet(complaint, log) {
@@ -209,6 +251,21 @@ function updateComplaintInSheet(complaint, log) {
     compSheet.getRange(foundRow, 13).setValue(complaint.finalAnswer || ""); // Column M: Final Answer
     compSheet.getRange(foundRow, 14).setValue(complaint.assignedDepartment || ""); // Column N: Assigned Dept
     compSheet.getRange(foundRow, 16).setValue(complaint.updatedAt); // Column P: Updated At
+    
+    // Also update supporting evidence in spreadsheet if it exists and wasn't there
+    var existingEvidence = values[foundRow - 1][16] ? values[foundRow - 1][16].toString() : "";
+    if (!existingEvidence && complaint.supportingEvidence) {
+      var evidenceUrl = complaint.supportingEvidence;
+      if (evidenceUrl && evidenceUrl.indexOf("base64,") > -1) {
+        var uploadedUrl = uploadToDrive(evidenceUrl, complaint.supportingEvidenceName);
+        if (uploadedUrl && !uploadedUrl.startsWith("Error")) {
+          evidenceUrl = uploadedUrl;
+          complaint.supportingEvidence = uploadedUrl;
+        }
+      }
+      compSheet.getRange(foundRow, 17).setValue(evidenceUrl);
+      compSheet.getRange(foundRow, 18).setValue(complaint.supportingEvidenceName || "");
+    }
   }
   
   // Append log
@@ -223,7 +280,7 @@ function updateComplaintInSheet(complaint, log) {
     log.timestamp
   ]);
   
-  return jsonResponse({ success: true });
+  return jsonResponse({ success: true, complaint: complaint });
 }
 
 function getComplaintsFromSheet() {
@@ -249,7 +306,9 @@ function getComplaintsFromSheet() {
       finalAnswer: values[i][12] ? values[i][12].toString() : "",
       assignedDepartment: values[i][13] ? values[i][13].toString() : "",
       createdAt: values[i][14] ? values[i][14].toString() : "",
-      updatedAt: values[i][15] ? values[i][15].toString() : ""
+      updatedAt: values[i][15] ? values[i][15].toString() : "",
+      supportingEvidence: values[i][16] ? values[i][16].toString() : "",
+      supportingEvidenceName: values[i][17] ? values[i][17].toString() : ""
     });
   }
   return jsonResponse(list);
@@ -302,7 +361,8 @@ function jsonResponse(obj) {
 function errorResponse(msg) {
   return ContentService.createTextOutput(JSON.stringify({ success: false, error: msg }))
     .setMimeType(ContentService.MimeType.JSON);
-}`;
+}
+`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(appsScriptCode);
