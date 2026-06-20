@@ -688,17 +688,6 @@ export default function App() {
                       />
                     </div>
 
-                    <div className="p-3.5 bg-slate-50 rounded-xl text-[11px] text-slate-500 border border-slate-200">
-                      <b>💡 Akun Bawaan (Default):</b>
-                      <ul className="list-disc list-inside mt-1 space-y-0.5 text-slate-600">
-                        <li><b>Admin:</b> Email: <code className="bg-white px-1 py-0.5 rounded text-rose-600">admin@madrasah.sch.id</code></li>
-                        <li><b>Ketua Tim:</b> Email: <code className="bg-white px-1 py-0.5 rounded text-rose-600">ketua@madrasah.sch.id</code></li>
-                        <li><b>Waka Bidang:</b> Email: <code className="bg-white px-1 py-0.5 rounded text-rose-600">kesiswaan@madrasah.sch.id</code></li>
-                        <li><b>Siswa Budi:</b> Email: <code className="bg-white px-1 py-0.5 rounded text-rose-600">budi@siswa.sch.id</code></li>
-                        <li><i>Gunakan password default: <code className="bg-white px-1 py-0.5 rounded text-emerald-700 font-bold">man2plg123</code> untuk otentikasi.</i></li>
-                      </ul>
-                    </div>
-
                     <button
                       type="submit"
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"

@@ -84,6 +84,7 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
   // Sub-category options
   const subCategories: Record<'Informasi' | 'Pengaduan Pelanggaran', string[]> = {
     'Informasi': [
+      'Proses Belajar Mengajar',
       'Pendaftaran & Layanan Akademik',
       'Fasilitas Kelas & Sarpras',
       'Kegiatan Ekstrakurikuler',
@@ -92,6 +93,7 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
       'Lainnya'
     ],
     'Pengaduan Pelanggaran': [
+      'Proses Belajar Mengajar',
       'Perundungan (Bullying / Cyber-bullying)',
       'Kekerasan Fisik / Verbal oleh Staf/Siswa',
       'Pungutan Liar (Pungli)',

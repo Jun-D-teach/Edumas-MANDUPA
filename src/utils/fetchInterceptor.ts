@@ -432,6 +432,106 @@ export function interceptFetch() {
       });
     }
 
+    // 3b. GET /api/logs
+    if (path === '/api/logs' && method === 'GET') {
+      let logs = StorageManager.getLogs();
+      if (gasUrl) {
+        try {
+          const gasLogs = await syncToGASDirect(gasUrl, 'getLogs', {});
+          if (gasLogs && Array.isArray(gasLogs)) {
+            StorageManager.setLogs(gasLogs);
+            logs = gasLogs;
+          }
+        } catch (e) {
+          console.warn('Sync logs from GAS failed:', e);
+        }
+      }
+      return new Response(JSON.stringify(logs), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // 3c. DELETE /api/complaints/:id
+    if (path.startsWith('/api/complaints/') && method === 'DELETE') {
+      const segments = path.split('/');
+      const complaintId = segments[3];
+      const complaints = StorageManager.getComplaints();
+      const complaintIndex = complaints.findIndex(c => c.id === complaintId);
+      if (complaintIndex !== -1) {
+        complaints.splice(complaintIndex, 1);
+        StorageManager.setComplaints(complaints);
+        
+        // Filter associated logs
+        let logs = StorageManager.getLogs();
+        logs = logs.filter(l => l.complaintId !== complaintId);
+        StorageManager.setLogs(logs);
+
+        // Filter associated notifications
+        let notifications = [];
+        try {
+          const rawNotifs = localStorage.getItem('km_notifications');
+          if (rawNotifs) {
+            notifications = JSON.parse(rawNotifs).filter((n: any) => n.complaintId !== complaintId);
+            localStorage.setItem('km_notifications', JSON.stringify(notifications));
+          }
+        } catch(e) {}
+      }
+      return new Response(JSON.stringify({ success: true, message: 'Pengaduan sukses dihapus.' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // 3d. GET /api/admin/users
+    if (path === '/api/admin/users' && method === 'GET') {
+      const users = StorageManager.getUsers();
+      return new Response(JSON.stringify(users), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // 3e. POST /api/admin/change-user-password
+    if (path === '/api/admin/change-user-password' && method === 'POST') {
+      const { userId, newPassword } = bodyData || {};
+      const users = StorageManager.getUsers();
+      const targetUser = users.find(u => u.id === userId);
+      if (targetUser) {
+        targetUser.password = newPassword;
+        StorageManager.setUsers(users);
+        return new Response(JSON.stringify({ success: true, message: `Kata sandi akun ${targetUser.name} berhasil diperbarui.` }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      return new Response(JSON.stringify({ error: 'Akun tidak ditemukan' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // 3f. POST /api/admin/update-user
+    if (path === '/api/admin/update-user' && method === 'POST') {
+      const { userId, name, email, password } = bodyData || {};
+      const users = StorageManager.getUsers();
+      const targetUser = users.find(u => u.id === userId);
+      if (targetUser) {
+        if (name) targetUser.name = name;
+        if (email) targetUser.email = email.toLowerCase().trim();
+        if (password) targetUser.password = password;
+        StorageManager.setUsers(users);
+        return new Response(JSON.stringify({ success: true, message: `Data akun ${targetUser.name} berhasil diperbarui.` }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      return new Response(JSON.stringify({ error: 'Akun tidak ditemukan' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     // 4. GET /api/complaints/:id/logs
     if (path.startsWith('/api/complaints/') && path.endsWith('/logs') && method === 'GET') {
       const segments = path.split('/');
@@ -533,6 +633,11 @@ export function interceptFetch() {
           break;
         case 'KLASIFIKASI_TERUSKAN':
           complaint.assignedDepartment = assignedDepartment as Department;
+          newStatus = 'FORWARDED';
+          break;
+        case 'REASSIGN_DEPARTMENT':
+          complaint.assignedDepartment = assignedDepartment as Department;
+          complaint.departmentResponse = ''; // clear any outdated response
           newStatus = 'FORWARDED';
           break;
         case 'INPUT_TANGGAPAN_BIDANG':

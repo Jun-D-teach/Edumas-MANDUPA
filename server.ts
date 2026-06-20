@@ -702,6 +702,22 @@ app.post('/api/admin/change-user-password', (req, res) => {
   return res.json({ success: true, message: `Kata sandi akun ${targetUser.name} berhasil diperbarui.` });
 });
 
+app.post('/api/admin/update-user', (req, res) => {
+  const { userId, name, email, password } = req.body;
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID wajib diisi.' });
+  }
+  const targetUser = store.users.find(u => u.id === userId);
+  if (!targetUser) {
+    return res.status(404).json({ error: 'Akun petugas tidak ditemukan.' });
+  }
+  if (name) targetUser.name = name;
+  if (email) targetUser.email = email.toLowerCase().trim();
+  if (password) targetUser.password = password;
+  saveStore();
+  return res.json({ success: true, message: `Data akun ${targetUser.name} berhasil diperbarui.` });
+});
+
 app.get('/api/notifications', (req, res) => {
   res.json(store.notifications || []);
 });
@@ -733,6 +749,21 @@ app.get('/api/complaints', (req, res) => {
   res.json(store.complaints);
 });
 
+app.delete('/api/complaints/:id', (req, res) => {
+  const complaintId = req.params.id;
+  const complaintIndex = store.complaints.findIndex(c => c.id === complaintId);
+  if (complaintIndex === -1) {
+    return res.status(404).json({ error: 'Pengaduan tidak ditemukan.' });
+  }
+  store.complaints.splice(complaintIndex, 1);
+  store.logs = store.logs.filter(l => l.complaintId !== complaintId);
+  if (store.notifications) {
+    store.notifications = store.notifications.filter(n => n.complaintId !== complaintId);
+  }
+  saveStore();
+  return res.json({ success: true, message: 'Laporan pengaduan berhasil dihapus beserta log kegiatannya.' });
+});
+
 app.get('/api/complaints/:id/logs', (req, res) => {
   const complaintId = req.params.id;
   const filteredLogs = store.logs.filter(l => l.complaintId === complaintId);
@@ -745,6 +776,7 @@ app.get('/api/logs', (req, res) => {
 
 function getDepartmentFromSubCategory(subCategory: string): Department {
   switch (subCategory) {
+    case 'Proses Belajar Mengajar':
     case 'Pendaftaran & Layanan Akademik':
     case 'Kalender Pendidikan & Ujian':
       return 'Kurikulum';
@@ -862,6 +894,12 @@ app.post('/api/complaints/:id/action', async (req, res) => {
 
     case 'KLASIFIKASI_TERUSKAN': // Step 3: Admin classifies as "Pengaduan" and forwards to related department
       complaint.assignedDepartment = assignedDepartment as Department;
+      newStatus = 'FORWARDED';
+      break;
+
+    case 'REASSIGN_DEPARTMENT': // Admin modifies/adjusts the assigned department
+      complaint.assignedDepartment = assignedDepartment as Department;
+      complaint.departmentResponse = ''; // clear any existing outdated response draft
       newStatus = 'FORWARDED';
       break;
 

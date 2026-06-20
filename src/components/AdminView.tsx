@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Layers, Settings, FileSpreadsheet, Check, Send, AlertCircle, RefreshCw, MessageSquare, HelpCircle, ArrowRight, CornerDownRight, Printer, Calendar, Filter, FileText, Users, Key, Eye } from 'lucide-react';
+import { Layers, Settings, FileSpreadsheet, Check, Send, AlertCircle, RefreshCw, MessageSquare, HelpCircle, ArrowRight, CornerDownRight, Printer, Calendar, Filter, FileText, Users, Key, Eye, Trash2, Edit3, History } from 'lucide-react';
 import { Complaint, User, Department, ActivityLog } from '../types.js';
 import { StatusBadge } from './RoleBadge.js';
 import { ComplaintDetailModal } from './ComplaintDetailModal.js';
@@ -52,8 +52,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [usersNewPassword, setUsersNewPassword] = useState<string>('');
+  const [usersNewName, setUsersNewName] = useState<string>('');
+  const [usersNewEmail, setUsersNewEmail] = useState<string>('');
   const [updatingUsersPassword, setUpdatingUsersPassword] = useState<boolean>(false);
   const [usersMessage, setUsersMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // States for delete action & reassigning department/bidang
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingDeptComplaintId, setEditingDeptComplaintId] = useState<string | null>(null);
+  const [selectedNewDept, setSelectedNewDept] = useState<Department>('Kesiswaan');
+  const [reassigningDept, setReassigningDept] = useState<boolean>(false);
 
   // Classify fields
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
@@ -219,26 +227,36 @@ export const AdminView: React.FC<AdminViewProps> = ({
     }
   };
 
-  const handleUpdateUserPassword = async (userId: string) => {
-    if (!usersNewPassword.trim()) return;
+  const handleUpdateUser = async (userId: string) => {
+    if (!usersNewName.trim() || !usersNewEmail.trim() || !usersNewPassword.trim()) {
+      alert('Semua data wajib diisi.');
+      return;
+    }
     setUpdatingUsersPassword(true);
     setUsersMessage(null);
     try {
-      const response = await fetch('/api/admin/change-user-password', {
+      const response = await fetch('/api/admin/update-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ userId, newPassword: usersNewPassword.trim() })
+        body: JSON.stringify({ 
+          userId, 
+          name: usersNewName.trim(), 
+          email: usersNewEmail.trim().toLowerCase(), 
+          password: usersNewPassword.trim() 
+        })
       });
       const data = await response.json();
       if (response.ok) {
-        setUsersMessage({ text: data.message || 'Sandi sukses diperbarui!', type: 'success' });
+        setUsersMessage({ text: data.message || 'Profil akun sukses diperbarui!', type: 'success' });
         setEditingUserId(null);
         setUsersNewPassword('');
+        setUsersNewName('');
+        setUsersNewEmail('');
         await fetchUsers();
       } else {
-        throw new Error(data.error || 'Gagal memperbarui sandi.');
+        throw new Error(data.error || 'Gagal memperbarui data akun.');
       }
     } catch (err: any) {
       setUsersMessage({ text: err.message, type: 'error' });
@@ -247,9 +265,60 @@ export const AdminView: React.FC<AdminViewProps> = ({
     }
   };
 
+  const handleDeleteComplaint = async (complaintId: string) => {
+    try {
+      const response = await fetch(`/api/complaints/${complaintId}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(data.message || 'Pengaduan berhasil dihapus.');
+        setConfirmDeleteId(null);
+        await onRefreshComplaints();
+      } else {
+        throw new Error(data.error || 'Gagal menghapus pengaduan.');
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const handleUpdateComplaintDept = async (complaintId: string) => {
+    setReassigningDept(true);
+    try {
+      const response = await fetch(`/api/complaints/${complaintId}/action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'REASSIGN_DEPARTMENT',
+          actorName: user.name,
+          actorRole: user.role,
+          assignedDepartment: selectedNewDept,
+          notes: `Admin dialihkan/didisposisikan ulang penugasan dari bidang lama ke Waka ${selectedNewDept === 'Kaur TU' ? 'Kaur TU' : selectedNewDept}`
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`Berhasil mengalihkan disposisi bidang ke Waka ${selectedNewDept === 'Kaur TU' ? 'Kaur TU' : selectedNewDept}`);
+        setEditingDeptComplaintId(null);
+        await onRefreshComplaints();
+      } else {
+        throw new Error(data.error || 'Gagal mengalihkan bidang.');
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setReassigningDept(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
+    } else if (activeTab === 'logs') {
+      fetchAllLogs();
     }
   }, [activeTab]);
 
@@ -330,6 +399,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <Users className="w-4 h-4" />
           Manajemen Petugas
         </button>
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={`flex items-center gap-1.5 px-5 py-3 text-xs md:text-sm font-bold tracking-wide border-b-2 transition-all cursor-pointer ${activeTab === 'logs' ? 'border-emerald-600 text-emerald-800 bg-emerald-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <History className="w-4 h-4" />
+          Riwayat Kegiatan
+        </button>
       </div>
 
       {activeTab === 'triage' && (
@@ -376,6 +452,57 @@ export const AdminView: React.FC<AdminViewProps> = ({
                     <h4 className="font-bold text-slate-800 text-sm mb-1.5">{c.title}</h4>
                     <p className="text-slate-500 text-xs leading-relaxed mb-4">{c.description}</p>
 
+                    {/* Department / Bidang Info and Reassignment */}
+                    {c.assignedDepartment && (
+                      <div className="mb-4 text-xs bg-indigo-50/40 p-2.5 border border-indigo-100 rounded-xl flex flex-col gap-2 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 font-medium font-sans">Bidang Penyelidikan:</span>
+                            <span className="font-extrabold text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-150">
+                              Waka {c.assignedDepartment === 'Kaur TU' ? 'Kaur TU' : c.assignedDepartment}
+                            </span>
+                          </div>
+                          {c.status !== 'RESOLVED' && c.status !== 'INFO_ANSWERED' && (
+                            <button
+                              onClick={() => {
+                                setEditingDeptComplaintId(editingDeptComplaintId === c.id ? null : c.id);
+                                setSelectedNewDept(c.assignedDepartment || 'Kesiswaan');
+                              }}
+                              className="text-[10px] text-indigo-650 hover:text-indigo-800 font-bold bg-white border border-slate-250 px-2 py-1 rounded-md transition cursor-pointer"
+                            >
+                              {editingDeptComplaintId === c.id ? 'Batal' : 'Ubah Bidang'}
+                            </button>
+                          )}
+                        </div>
+
+                        {editingDeptComplaintId === c.id && (
+                          <div className="bg-white p-2.5 rounded-lg border border-indigo-100/80 space-y-2 animate-fade-in text-[11px]">
+                            <span className="font-bold text-slate-700 block">Alihkan Bidang Terkait:</span>
+                            <div className="flex gap-2">
+                              <select
+                                value={selectedNewDept}
+                                onChange={(e) => setSelectedNewDept(e.target.value as Department)}
+                                className="flex-1 text-[11px] font-medium border border-slate-200 bg-white rounded p-1 text-slate-800 focus:outline-none"
+                              >
+                                {departments.map((dept) => (
+                                  <option key={dept} value={dept}>
+                                    Waka {dept === 'Kaur TU' ? 'Kaur TU' : dept}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => handleUpdateComplaintDept(c.id)}
+                                disabled={reassigningDept}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded text-[10px] cursor-pointer disabled:opacity-50"
+                              >
+                                {reassigningDept ? 'Menyimpan...' : 'Simpan'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between pt-3 border-t border-slate-250/50 text-xs">
                       <div className="text-slate-400 font-medium">
                         Pengirim:{' '}
@@ -393,6 +520,33 @@ export const AdminView: React.FC<AdminViewProps> = ({
                         >
                           Kronologi
                         </button>
+
+                        {/* Hapus Pengaduan Action with Confirmation */}
+                        {confirmDeleteId === c.id ? (
+                          <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 rounded-lg p-1 animate-fade-in text-[10px]">
+                            <span className="font-bold text-rose-800 px-1 font-sans">Hapus?</span>
+                            <button
+                              onClick={() => handleDeleteComplaint(c.id)}
+                              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                            >
+                              Ya
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="bg-slate-200 hover:bg-slate-300 text-slate-705 font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(c.id)}
+                            className="px-2.5 py-1.5 rounded bg-rose-50 hover:bg-rose-100 font-bold text-[11px] text-rose-700 cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Hapus
+                          </button>
+                        )}
 
                         {/* Step 3 Action: Klasifikasi */}
                         {c.status === 'PENDING' && (
@@ -1253,36 +1407,60 @@ export const AdminView: React.FC<AdminViewProps> = ({
           )}
 
           {editingUserId && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 animate-fade-in max-w-md">
-              <span className="font-extrabold text-[10px] uppercase text-emerald-800 tracking-wider block mb-1">Modifikasi Sandi Petugas</span>
-              <h4 className="text-xs font-bold text-slate-800 mb-3">
-                Ganti Sandi Akun: <span className="font-mono text-indigo-700">{usersList.find(u => u.id === editingUserId)?.name}</span>
-              </h4>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 animate-fade-in max-w-md space-y-4">
+              <div>
+                <span className="font-extrabold text-[10px] uppercase text-emerald-800 tracking-wider block mb-1">Modifikasi Detail Petugas</span>
+                <h4 className="text-xs font-bold text-slate-800">
+                  Perbarui Akun: <span className="font-mono text-indigo-700">{usersList.find(u => u.id === editingUserId)?.name}</span>
+                </h4>
+              </div>
               <div className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Lengkap Petugas:</label>
+                  <input
+                    type="text"
+                    value={usersNewName}
+                    onChange={(e) => setUsersNewName(e.target.value)}
+                    placeholder="Masukkan nama lengkap..."
+                    className="w-full text-xs border border-slate-200 rounded-lg p-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Alamat Email Kredensial:</label>
+                  <input
+                    type="email"
+                    value={usersNewEmail}
+                    onChange={(e) => setUsersNewEmail(e.target.value)}
+                    placeholder="Masukkan email..."
+                    className="w-full text-xs font-mono border border-slate-200 rounded-lg p-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-bold"
+                  />
+                </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sandi Baru Yang Diinginkan:</label>
                   <input
                     type="text"
                     value={usersNewPassword}
                     onChange={(e) => setUsersNewPassword(e.target.value)}
-                    placeholder="Masukkan sandi minimal 6 karakter..."
+                    placeholder="Masukkan sandi..."
                     className="w-full text-xs font-mono border border-slate-200 rounded-lg p-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-bold"
                   />
                 </div>
-                <div className="flex gap-2.5">
+                <div className="flex gap-2.5 pt-1">
                   <button
-                    onClick={() => handleUpdateUserPassword(editingUserId)}
-                    disabled={updatingUsersPassword || !usersNewPassword.trim()}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs py-1.5 px-3 rounded-lg transition-all flex items-center justify-center"
+                    onClick={() => handleUpdateUser(editingUserId)}
+                    disabled={updatingUsersPassword || !usersNewPassword.trim() || !usersNewName.trim() || !usersNewEmail.trim()}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs py-2 px-3 rounded-lg transition-all flex items-center justify-center cursor-pointer"
                   >
-                    {updatingUsersPassword ? 'Menyimpan...' : 'Perbarui Sandi'}
+                    {updatingUsersPassword ? 'Menyimpan...' : 'Perbarui Kredensial'}
                   </button>
                   <button
                     onClick={() => {
                       setEditingUserId(null);
                       setUsersNewPassword('');
+                      setUsersNewName('');
+                      setUsersNewEmail('');
                     }}
-                    className="bg-slate-250 text-slate-700 hover:bg-slate-300 font-bold text-xs py-1.5 px-3 rounded-lg transition-all"
+                    className="bg-slate-200 text-slate-700 hover:bg-slate-250 font-bold text-xs py-2 px-3 rounded-lg transition-all cursor-pointer"
                   >
                     Batal
                   </button>
@@ -1354,27 +1532,128 @@ export const AdminView: React.FC<AdminViewProps> = ({
                           </div>
                         </td>
                         <td className="p-3 text-center">
-                          {item.role !== 'admin' ? (
-                            <button
-                              onClick={() => {
-                                setEditingUserId(item.id);
-                                setUsersNewPassword(item.password || 'man2plg123');
-                                setUsersMessage(null);
-                              }}
-                              className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-indigo-900 rounded-lg text-xs font-extrabold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 mx-auto"
-                            >
-                              <Key className="w-3 h-3 text-indigo-500" />
-                              Ganti Sandi
-                            </button>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 italic font-mono select-none">Otoritas Lock</span>
-                          )}
+                          <button
+                            onClick={() => {
+                              setEditingUserId(item.id);
+                              setUsersNewName(item.name);
+                              setUsersNewEmail(item.email);
+                              setUsersNewPassword(item.password || 'man2plg123');
+                              setUsersMessage(null);
+                            }}
+                            className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-indigo-900 rounded-lg text-xs font-extrabold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 mx-auto"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-indigo-500" />
+                            Ubah Detail & Sandi
+                          </button>
                         </td>
                       </tr>
                     ))
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'logs' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="font-bold text-slate-800 text-base md:text-lg flex items-center gap-2">
+                <History className="w-5 h-5 text-emerald-600" />
+                Daftar Riwayat Kegiatan & Audit Trail Petugas
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Lacak seluruh aktivitas tindakan dari Administrator/Admisi, Ketua Tim Verifikasi, serta Wakil Kepala Sekolah (Waka Bidang) di madrasah secara real-time.
+              </p>
+            </div>
+            <button
+              onClick={fetchAllLogs}
+              disabled={loadingLogs}
+              className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 transition-all rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingLogs ? 'animate-spin' : ''}`} />
+              Segarkan Log
+            </button>
+          </div>
+
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            {loadingLogs && allLogs.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 italic">
+                <RefreshCw className="w-5 h-5 mx-auto animate-spin mb-2 text-emerald-600" />
+                Memuat riwayat kegiatan...
+              </div>
+            ) : allLogs.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                Belum ada rekaman riwayat kegiatan saat ini.
+              </div>
+            ) : (
+              [...allLogs]
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .map((log) => {
+                  // Find related ticket number for context helper
+                  const relComp = complaints.find(c => c.id === log.complaintId);
+                  
+                  return (
+                    <div 
+                      key={log.id} 
+                      className="border border-slate-150 p-4 rounded-xl hover:bg-slate-50/50 transition-all text-xs flex flex-col md:flex-row md:items-start md:justify-between gap-4"
+                    >
+                      <div className="space-y-2 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`inline-block text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded border ${
+                            log.actorRole === 'admin' 
+                              ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                              : log.actorRole === 'ketuatim'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          }`}>
+                            {log.actorRole === 'admin' 
+                              ? 'ADMINISTRATOR' 
+                              : log.actorRole === 'ketuatim'
+                              ? 'KETUA TIM VERIFIKASI'
+                              : 'WAKA / BIDANG'}
+                          </span>
+                          <span className="font-extrabold text-slate-800">{log.actorName}</span>
+                          <span className="text-slate-300">|</span>
+                          <span className="text-slate-500 font-mono text-[10px]">
+                            {new Date(log.timestamp).toLocaleString('id-ID', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit'
+                            })} WIB
+                          </span>
+                        </div>
+                        
+                        <p className="text-slate-650 leading-relaxed font-semibold bg-slate-50 p-2.5 rounded border border-slate-100 font-sans">
+                          {log.notes}
+                        </p>
+
+                        {relComp && (
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                            <span className="font-bold uppercase text-[9px] text-slate-400">Tautan Tiket:</span>
+                            <span className="font-mono bg-slate-100 border border-slate-200 px-1 py-0.2 rounded font-black text-slate-600">
+                              {relComp.ticketNumber}
+                            </span>
+                            <span className="text-slate-600 truncate max-w-xs block font-bold">
+                              "{relComp.title}"
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="font-mono text-[9px] text-slate-400 bg-slate-100/60 px-1.5 py-0.5 rounded border border-slate-200">
+                          ID: {log.id}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
           </div>
         </div>
       )}
