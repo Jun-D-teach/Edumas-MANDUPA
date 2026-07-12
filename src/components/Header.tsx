@@ -95,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
             title="Sembunyikan/Tampilkan Sandbox (Klik 3x)"
           >
             <img 
-              src="/api/logo.svg" 
+              src="https://man2plg.sch.id/Foto/logo.png" 
               alt="Logo MAN 2 Palembang" 
               className="w-8 h-8 md:w-9 md:h-9 object-contain"
               referrerPolicy="no-referrer"
