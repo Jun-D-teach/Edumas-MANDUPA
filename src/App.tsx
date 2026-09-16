@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
 import React, { useState, useEffect } from 'react';
 import { User, Complaint, UserRole, KMNotification } from './types.js';
 import { Header } from './components/Header.js';
@@ -33,7 +32,7 @@ export default function App() {
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [regRole, setRegRole] = useState<UserRole>('pelapor');
+  const [regRole, setRegRole] = useState<UserRole>('pelapor'); // Default sudah pelapor
 
   // Forgot password form fields
   const [forgotEmail, setForgotEmail] = useState('');
@@ -57,6 +56,16 @@ export default function App() {
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [sandboxOTP, setSandboxOTP] = useState<string | undefined>(undefined);
   const [authError, setAuthError] = useState('');
+
+  // Debugging State Changes
+  useEffect(() => {
+    if (verifyEmail) {
+      console.log("👁️ [DEBUG] Modal OTP seharusnya TERBUKA untuk:", verifyEmail);
+      console.log("👁️ [DEBUG] Sandbox OTP:", sandboxOTP);
+    } else {
+      console.log("👁️ [DEBUG] Modal OTP TUTUP (verifyEmail null)");
+    }
+  }, [verifyEmail, sandboxOTP]);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -153,7 +162,6 @@ export default function App() {
     };
     initialize();
 
-    // Polling complaints and notifications for dual-session/real-time feel
     const interval = setInterval(() => {
       fetchComplaints();
       fetchNotifications();
@@ -161,7 +169,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Update simulator view whenever user logs in or registers successfully
   useEffect(() => {
     if (user) {
       setSimulatedRole(user.role);
@@ -180,7 +187,6 @@ export default function App() {
 
       const result = await response.json();
       if (!response.ok) {
-        // Handle unverified user redirecting to OTP insertion block
         if (result.unverified && result.email) {
           setVerifyEmail(result.email);
           setAuthError('');
@@ -200,6 +206,9 @@ export default function App() {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
+    
+    console.log("🚀 [DEBUG] Mencoba registrasi dengan email:", regEmail);
+    
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -213,14 +222,21 @@ export default function App() {
       });
 
       const result = await response.json();
+      console.log("📡 [DEBUG] Response dari server:", result);
+
       if (!response.ok) {
         throw new Error(result.error || 'Pendaftaran gagal.');
       }
 
-      // Triggers OTP insert modal with sandbox code bypass
+      console.log("✅ [DEBUG] Registrasi berhasil! Menampilkan modal OTP...");
+      
+      // PENTING: Set state modal DAN tutup form registrasi agar tidak bentrok
       setVerifyEmail(regEmail);
       setSandboxOTP(result.sandboxOTP);
+      setShowAuthCard(false); 
+      
     } catch (err: any) {
+      console.error("❌ [DEBUG] Error registrasi:", err);
       setAuthError(err.message);
     }
   };
@@ -465,7 +481,6 @@ export default function App() {
               setAuthMode('login');
               setShowAuthCard(true);
               setAuthError('');
-              // Scroll to auth section smoothly
               setTimeout(() => {
                 document.getElementById('auth-section-trigger')?.scrollIntoView({ behavior: 'smooth' });
               }, 100);
@@ -486,12 +501,10 @@ export default function App() {
     clearAuthForms();
   };
 
-  // Fallbacks for simulated actors when testing without being logged in
   const getSimulatedUser = (): User => {
     if (user && user.role === simulatedRole) {
       return user;
     }
-    // Fallback static testing user roles
     const fallbackUsers: Record<UserRole, User> = {
       pelapor: { id: 'u-anon', email: '', name: 'Masyarakat', role: 'pelapor', isVerified: true, createdAt: '' },
       admin: { id: 'u-1', email: 'admin@madrasah.sch.id', name: 'Ustadz Ahmad Fauzi (Admin)', role: 'admin', isVerified: true, createdAt: '' },
@@ -504,7 +517,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-emerald-500 selection:text-white" id="main-application-frame">
       
-      {/* Top Header */}
       <Header
         user={user}
         onLogout={handleLogout}
@@ -517,7 +529,6 @@ export default function App() {
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
       />
 
-      {/* Primary Container App */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {loading ? (
@@ -527,56 +538,27 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* View Switching Router */}
             <div className="animate-fade-in">
               {simulatedRole === 'pelapor' && (
-                <PelaporView
-                  user={user}
-                  complaints={complaints}
-                  onRefreshComplaints={fetchComplaints}
-                />
+                <PelaporView user={user} complaints={complaints} onRefreshComplaints={fetchComplaints} />
               )}
-
               {simulatedRole === 'admin' && (
                 user && user.role === 'admin' ? (
-                  <AdminView
-                    user={user}
-                    complaints={complaints}
-                    onRefreshComplaints={fetchComplaints}
-                    gasUrl={gasUrl}
-                    onUpdateGasUrl={updateGasUrl}
-                  />
-                ) : (
-                  renderLockedView('admin')
-                )
+                  <AdminView user={user} complaints={complaints} onRefreshComplaints={fetchComplaints} gasUrl={gasUrl} onUpdateGasUrl={updateGasUrl} />
+                ) : renderLockedView('admin')
               )}
-
               {simulatedRole === 'bidang' && (
                 user && user.role === 'bidang' ? (
-                  <BidangView
-                    user={user}
-                    complaints={complaints}
-                    onRefreshComplaints={fetchComplaints}
-                  />
-                ) : (
-                  renderLockedView('bidang')
-                )
+                  <BidangView user={user} complaints={complaints} onRefreshComplaints={fetchComplaints} />
+                ) : renderLockedView('bidang')
               )}
-
               {simulatedRole === 'ketuatim' && (
                 user && user.role === 'ketuatim' ? (
-                  <KetuaView
-                    user={user}
-                    complaints={complaints}
-                    onRefreshComplaints={fetchComplaints}
-                  />
-                ) : (
-                  renderLockedView('ketuatim')
-                )
+                  <KetuaView user={user} complaints={complaints} onRefreshComplaints={fetchComplaints} />
+                ) : renderLockedView('ketuatim')
               )}
             </div>
 
-            {/* Account Panel / Join Block (Only shown when not logged in to guide them for Registrasi/Verifikasi) */}
             {!user && !showAuthCard && (
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 mt-12">
                 <div className="flex items-center gap-4 text-left">
@@ -593,21 +575,13 @@ export default function App() {
 
                 <div className="flex items-center gap-3 shrink-0">
                   <button
-                    onClick={() => {
-                      setAuthMode('login');
-                      setShowAuthCard(true);
-                      setAuthError('');
-                    }}
+                    onClick={() => { setAuthMode('login'); setShowAuthCard(true); setAuthError(''); }}
                     className="px-4 py-2 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
                   >
                     Masuk Akun
                   </button>
                   <button
-                    onClick={() => {
-                      setAuthMode('register');
-                      setShowAuthCard(true);
-                      setAuthError('');
-                    }}
+                    onClick={() => { setAuthMode('register'); setShowAuthCard(true); setAuthError(''); }}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     Mulai Registrasi
@@ -617,25 +591,15 @@ export default function App() {
               </div>
             )}
 
-            {/* Collapsible Authentication & Verification Sandbox Card */}
             {showAuthCard && (
               <div className="bg-white border-2 border-slate-250 rounded-2xl p-6 shadow-sm max-w-md mx-auto relative animate-fade-in" id="auth-panel">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
                   <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                    {authMode === 'login' ? (
-                      <LogIn className="w-4.5 h-4.5 text-emerald-600" />
-                    ) : authMode === 'register' ? (
-                      <UserPlus className="w-4.5 h-4.5 text-emerald-600" />
-                    ) : (
-                      <Key className="w-4.5 h-4.5 text-emerald-600" />
-                    )}
+                    {authMode === 'login' ? <LogIn className="w-4.5 h-4.5 text-emerald-600" /> : authMode === 'register' ? <UserPlus className="w-4.5 h-4.5 text-emerald-600" /> : <Key className="w-4.5 h-4.5 text-emerald-600" />}
                     {authMode === 'login' ? 'Masuk ke Akun' : authMode === 'register' ? 'Registrasi Akun Baru' : 'Atur Ulang Kata Sandi'}
                   </h3>
                   <button
-                    onClick={() => {
-                      setShowAuthCard(false);
-                      clearAuthForms();
-                    }}
+                    onClick={() => { setShowAuthCard(false); clearAuthForms(); }}
                     className="text-slate-400 hover:text-slate-600 text-xs font-semibold cursor-pointer"
                   >
                     Tutup form
@@ -663,16 +627,10 @@ export default function App() {
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-slate-500 font-bold mb-0">Sandi Masuk (Gunakan Sandi Keamanan Akun)</label>
+                        <label className="block text-slate-500 font-bold mb-0">Sandi Masuk</label>
                         <button
                           type="button"
-                          onClick={() => {
-                            setAuthMode('forgot');
-                            setForgotStep(1);
-                            setForgotEmail(loginEmail);
-                            setAuthError('');
-                            setForgotSuccessMessage('');
-                          }}
+                          onClick={() => { setAuthMode('forgot'); setForgotStep(1); setForgotEmail(loginEmail); setAuthError(''); setForgotSuccessMessage(''); }}
                           className="text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
                         >
                           Lupa Sandi?
@@ -687,23 +645,14 @@ export default function App() {
                         required
                       />
                     </div>
-
-                    <button
-                      type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
-                    >
+                    <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer">
                       Masuk Akun
                     </button>
-
                     <div className="text-center pt-2">
                       <span className="text-slate-400">Belum punya akun? </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          setAuthMode('register');
-                          setAuthError('');
-                          setForgotSuccessMessage('');
-                        }}
+                        onClick={() => { setAuthMode('register'); setAuthError(''); setForgotSuccessMessage(''); }}
                         className="text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
                       >
                         Daftar disini
@@ -749,23 +698,16 @@ export default function App() {
                       </div>
                       <div>
                         <label className="block text-slate-500 font-bold mb-1.5">Peran / Otoritas Akun</label>
-                        <select
-                          value={regRole}
-                          onChange={(e: any) => setRegRole(e.target.value)}
-                          className="w-full border border-slate-200 bg-white p-2.5 rounded-lg text-xs font-semibold focus:outline-none"
-                        >
-                          <option value="pelapor">Pelapor (Siswa / Wali)</option>
-                          <option value="admin">Admin Instansi</option>
-                          <option value="bidang">Staf Bidang (Humas/Sarpras)</option>
-                          <option value="ketuatim">Ketua Tim Penilai</option>
-                        </select>
+                        {/* Tampilan Role yang sudah di-fix (Statis & Rapi) */}
+                        <div className="w-full border border-slate-200 bg-slate-50 p-2.5 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          Pelapor (Siswa / Wali)
+                        </div>
+                        <input type="hidden" name="role" value="pelapor" />
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
-                    >
+                    <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer">
                       Daftar & Minta Kode Verifikasi Email
                     </button>
 
@@ -773,10 +715,7 @@ export default function App() {
                       <span className="text-slate-400">Sudah punya akun? </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          setAuthMode('login');
-                          setAuthError('');
-                        }}
+                        onClick={() => { setAuthMode('login'); setAuthError(''); }}
                         className="text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer"
                       >
                         Masuk disini
@@ -800,21 +739,13 @@ export default function App() {
                           required
                         />
                       </div>
-                      <button
-                        type="submit"
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
-                      >
+                      <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer">
                         Kirim Kode Pemulihan
                       </button>
-
                       <div className="text-center pt-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setAuthMode('login');
-                            setAuthError('');
-                            setForgotSuccessMessage('');
-                          }}
+                          onClick={() => { setAuthMode('login'); setAuthError(''); setForgotSuccessMessage(''); }}
                           className="text-emerald-750 hover:text-emerald-950 font-bold hover:underline cursor-pointer"
                         >
                           Kembali Ke Halaman Login
@@ -856,33 +787,20 @@ export default function App() {
                           required
                         />
                       </div>
-                      <button
-                        type="submit"
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
-                      >
+                      <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-sm transition-colors cursor-pointer">
                         Perbarui Kata Sandi Akun
                       </button>
-
                       <div className="flex items-center justify-between text-center pt-2 font-bold text-[11px]">
                         <button
                           type="button"
-                          onClick={() => {
-                            setForgotStep(1);
-                            setForgotSuccessMessage('');
-                            setAuthError('');
-                          }}
+                          onClick={() => { setForgotStep(1); setForgotSuccessMessage(''); setAuthError(''); }}
                           className="text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
                         >
                           Minta Code Baru?
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setAuthMode('login');
-                            setForgotStep(1);
-                            setForgotSuccessMessage('');
-                            setAuthError('');
-                          }}
+                          onClick={() => { setAuthMode('login'); setForgotStep(1); setForgotSuccessMessage(''); setAuthError(''); }}
                           className="text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
                         >
                           Masuk Portal
@@ -895,16 +813,20 @@ export default function App() {
             )}
           </>
         )}
-
       </main>
 
-      {/* OTP email verification modal popup (SOP Verifikasi) */}
+      {/* OTP email verification modal popup */}
       {verifyEmail && (
         <EmailVerificationModal
           email={verifyEmail}
           sandboxOTP={sandboxOTP}
           onSuccess={handleVerificationSuccess}
-          onClose={() => setVerifyEmail(null)}
+          onClose={() => {
+            console.log("👁️ [DEBUG] Tombol Batal diklik, menutup modal");
+            setVerifyEmail(null);
+            setSandboxOTP(undefined);
+            setShowAuthCard(false);
+          }}
         />
       )}
 
@@ -1007,14 +929,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Institutional Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 mt-16 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 space-y-1.5">
           <p className="font-semibold text-slate-650">© 2026 Kawal Madrasah - Layanan Aspirasi dan Satuan Pengaduan Terpadu</p>
           <p className="text-[10px]">Menegakkan Integritas, Ketertiban, serta Keamanan Civitas Akademika Madrasah Aliyah & Tsanawiyah</p>
         </div>
       </footer>
-
     </div>
   );
 }
