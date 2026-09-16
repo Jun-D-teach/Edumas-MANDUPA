@@ -84,17 +84,18 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
           </div>
 
           {/* Sandbox Overrides helper */}
-          {sandboxOTP && !success && (
-            <div className="mt-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-              <span className="font-bold block mb-1">💡 Petunjuk Pengujian Sandbox:</span>
-              Jika Anda belum menautkan Google Apps Script, gunakan kode OTP Bypass di bawah ini untuk mensimulasikan proses verifikasi:
-              <div className="mt-2 text-center">
-                <span className="font-mono text-lg font-extrabold tracking-wider bg-white border border-amber-300 px-4 py-1.5 rounded-lg inline-block">
-                  {sandboxOTP}
-                </span>
-              </div>
-            </div>
-          )}
+          {/* Sandbox Overrides helper - Hanya tampil di development */}
+{import.meta.env.DEV && sandboxOTP && !success && (
+  <div className="mt-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+    <span className="font-bold block mb-1">💡 Petunjuk Pengujian Sandbox:</span>
+    Jika Anda belum menautkan Google Apps Script, gunakan kode OTP Bypass di bawah ini untuk mensimulasikan proses verifikasi:
+    <div className="mt-2 text-center">
+      <span className="font-mono text-lg font-extrabold tracking-wider bg-white border border-amber-300 px-4 py-1.5 rounded-lg inline-block">
+        {sandboxOTP}
+      </span>
+    </div>
+  </div>
+)}
 
           {error && (
             <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
