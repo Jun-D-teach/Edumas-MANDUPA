@@ -536,13 +536,10 @@ app.post('/api/auth/register', async (req, res) => {
   console.log('[Register] User baru dibuat:', newUser.email);
   console.log('[Register] GAS URL:', store.gasUrl ? 'ADA' : 'KOSONG');
   
-  // === KIRIM EMAIL VERIFIKASI ===
-  let emailSent = false;
-  
-  // Metode 1: Via Google Apps Script
+  // Kirim email via GAS
   if (store.gasUrl) {
     try {
-      console.log('[Register] Mencoba kirim via GAS...');
+      console.log('[Register] Mengirim email via GAS...');
       const gasResponse = await fetch(store.gasUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -559,57 +556,19 @@ app.post('/api/auth/register', async (req, res) => {
       if (gasResponse.ok) {
         const result = await gasResponse.json();
         console.log('[Register] GAS response:', result);
-        if (result.success) {
-          emailSent = true;
-          console.log('[Register] ✅ Email terkirim via GAS');
-        }
       }
     } catch (err) {
-      console.error('[Register] ❌ Error GAS:', err);
+      console.error('[Register] Error GAS:', err);
     }
+  } else {
+    console.warn('[Register] ⚠️ Google Apps Script URL belum dikonfigurasi.');
+    console.log('[Register] OTP untuk testing:', verificationCode);
   }
   
-  // Metode 2: Fallback via SMTP (jika GAS gagal)
-  if (!emailSent) {
-    try {
-      console.log('[Register] Mencoba kirim via SMTP fallback...');
-      const htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
-          <h2 style="color: #047857;">Verifikasi Akun EDUMAS MAN 2</h2>
-          <p>Yth. <b>${newUser.name}</b>,</p>
-          <p>Gunakan kode OTP berikut untuk mengaktifkan akun Anda:</p>
-          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; text-align: center; padding: 18px; border-radius: 8px; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: 900; letter-spacing: 0.3em; color: #166534; font-family: monospace;">${verificationCode}</span>
-          </div>
-          <p style="font-size: 12px; color: #64748b;">Kode ini berlaku untuk satu kali verifikasi.</p>
-        </div>
-      `;
-      
-      const smtpSent = await sendNotificationEmail(
-        newUser.email,
-        '[EDUMAS MAN 2] Verifikasi Akun Baru',
-        htmlContent
-      );
-      
-      if (smtpSent) {
-        emailSent = true;
-        console.log('[Register] ✅ Email terkirim via SMTP');
-      }
-    } catch (err) {
-      console.error('[Register] ❌ Error SMTP:', err);
-    }
-  }
-  
-  if (!emailSent) {
-    console.warn('[Register] ⚠️ Email TIDAK terkirim. User harus verifikasi manual.');
-  }
-  
-  // RESPONSE - TIDAK ADA SANDBOX OTP LAGI!
+  // RESPONSE - TANPA SANDBOX OTP!
   res.json({
     success: true,
-    message: 'Registrasi berhasil. Kode verifikasi telah dikirim ke email Anda.',
-    email: newUser.email,
-    emailSent
+    message: 'Registrasi berhasil. Kode verifikasi telah dikirim ke email Anda.'
   });
 });
 

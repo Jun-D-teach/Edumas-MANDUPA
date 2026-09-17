@@ -54,8 +54,7 @@ export default function App() {
 
   // Verification overlay
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
-  const [sandboxOTP, setSandboxOTP] = useState<string | undefined>(undefined);
-  const [authError, setAuthError] = useState('');
+    const [authError, setAuthError] = useState('');
 
   // Debugging State Changes
   useEffect(() => {
@@ -203,7 +202,7 @@ export default function App() {
     }
   };
 
- const handleRegisterSubmit = async (e: React.FormEvent) => {
+const handleRegisterSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setAuthError('');
   try {
@@ -225,17 +224,15 @@ export default function App() {
     
     // Tampilkan modal verifikasi - TANPA sandbox OTP
     setVerifyEmail(regEmail);
-    // TIDAK ADA setSandboxOTP lagi!
+    // TIDAK ADA setSandboxOTP!
     
   } catch (err: any) {
     setAuthError(err.message);
   }
 };
-
   const handleVerificationSuccess = (verifiedUser: User) => {
     setUser(verifiedUser);
     setVerifyEmail(null);
-    setSandboxOTP(undefined);
     setShowAuthCard(false);
     clearAuthForms();
   };

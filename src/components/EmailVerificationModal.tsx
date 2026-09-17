@@ -74,7 +74,7 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
 
           {error && (
             <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
-              ️ {error}
+              ⚠️ {error}
             </div>
           )}
 
