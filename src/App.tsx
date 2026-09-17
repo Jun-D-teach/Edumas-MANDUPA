@@ -230,7 +230,7 @@ export default function App() {
     }
     
     setVerifyEmail(regEmail);
-    setSandboxOTP(result.sandboxOTP);
+    setSandboxOTP(result.undefined);
     setShowAuthCard(false);
     
   } catch (err: any) {

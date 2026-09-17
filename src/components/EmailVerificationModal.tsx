@@ -14,7 +14,6 @@ interface EmailVerificationModalProps {
 
 export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   email,
-  sandboxOTP,
   onSuccess,
   onClose
 }) => {
