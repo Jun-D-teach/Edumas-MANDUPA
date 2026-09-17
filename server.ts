@@ -513,7 +513,7 @@ app.post('/api/auth/register', async (req, res) => {
   // Cek duplikat di local store
   const existsLocal = store.users.find(u => u.email.toLowerCase() === emailLower);
   if (existsLocal) {
-    return res.status(400).json({ error: 'Email sudah terdaftar di sistem.' });
+    return res.status(400).json({ error: 'Email sudah terdaftar di sistem. Silakan login atau gunakan email lain.' });
   }
   
   // Generate 6 digit OTP
@@ -530,25 +530,20 @@ app.post('/api/auth/register', async (req, res) => {
     createdAt: new Date().toISOString()
   };
   
-  // Simpan ke local store dulu
   store.users.push(newUser);
   saveStore();
   
-  // Kirim ke Google Sheets via GAS
+  console.log('[Register] User baru dibuat:', newUser.email);
+  console.log('[Register] GAS URL:', store.gasUrl ? 'ADA' : 'KOSONG');
+  
+  // === KIRIM EMAIL VERIFIKASI ===
+  let emailSent = false;
+  
+  // Metode 1: Via Google Apps Script
   if (store.gasUrl) {
     try {
-      // 1. Tambahkan user ke sheet
-      await fetch(store.gasUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'addUser', 
-          data: newUser 
-        })
-      });
-      
-      // 2. Kirim email verifikasi
-      const emailResponse = await fetch(store.gasUrl, {
+      console.log('[Register] Mencoba kirim via GAS...');
+      const gasResponse = await fetch(store.gasUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -561,19 +556,60 @@ app.post('/api/auth/register', async (req, res) => {
         })
       });
       
-      const emailResult = await emailResponse.json();
-      console.log('[Register] Email result:', emailResult);
-      
+      if (gasResponse.ok) {
+        const result = await gasResponse.json();
+        console.log('[Register] GAS response:', result);
+        if (result.success) {
+          emailSent = true;
+          console.log('[Register] ✅ Email terkirim via GAS');
+        }
+      }
     } catch (err) {
-      console.error('[Register] GAS error:', err);
+      console.error('[Register] ❌ Error GAS:', err);
     }
   }
   
+  // Metode 2: Fallback via SMTP (jika GAS gagal)
+  if (!emailSent) {
+    try {
+      console.log('[Register] Mencoba kirim via SMTP fallback...');
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
+          <h2 style="color: #047857;">Verifikasi Akun EDUMAS MAN 2</h2>
+          <p>Yth. <b>${newUser.name}</b>,</p>
+          <p>Gunakan kode OTP berikut untuk mengaktifkan akun Anda:</p>
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; text-align: center; padding: 18px; border-radius: 8px; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: 900; letter-spacing: 0.3em; color: #166534; font-family: monospace;">${verificationCode}</span>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">Kode ini berlaku untuk satu kali verifikasi.</p>
+        </div>
+      `;
+      
+      const smtpSent = await sendNotificationEmail(
+        newUser.email,
+        '[EDUMAS MAN 2] Verifikasi Akun Baru',
+        htmlContent
+      );
+      
+      if (smtpSent) {
+        emailSent = true;
+        console.log('[Register] ✅ Email terkirim via SMTP');
+      }
+    } catch (err) {
+      console.error('[Register] ❌ Error SMTP:', err);
+    }
+  }
+  
+  if (!emailSent) {
+    console.warn('[Register] ⚠️ Email TIDAK terkirim. User harus verifikasi manual.');
+  }
+  
+  // RESPONSE - TIDAK ADA SANDBOX OTP LAGI!
   res.json({
     success: true,
-    message: 'Registrasi berhasil. Kode verifikasi telah dikirim ke email.',
+    message: 'Registrasi berhasil. Kode verifikasi telah dikirim ke email Anda.',
     email: newUser.email,
-    sandboxOTP: verificationCode // Untuk testing
+    emailSent
   });
 });
 
@@ -619,7 +655,7 @@ app.post('/api/auth/verify', async (req, res) => {
   } else {
     return res.status(400).json({ error: 'Kode verifikasi salah atau kadaluarsa.' });
   }
-});
+}); 
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -1084,7 +1120,40 @@ app.post('/api/complaints/:id/action', async (req, res) => {
 
   res.json({ success: true, complaint });
 });
+// === ENDPOINT CLEANUP USER STUCK ===
+app.get('/api/admin/unverified-users', (req, res) => {
+  const unverified = store.users.filter(u => !u.isVerified);
+  res.json({ 
+    total: unverified.length,
+    users: unverified.map(u => ({ id: u.id, email: u.email, name: u.name, createdAt: u.createdAt }))
+  });
+});
 
+app.post('/api/admin/cleanup-unverified', (req, res) => {
+  const beforeCount = store.users.length;
+  store.users = store.users.filter(u => u.isVerified === true);
+  const deletedCount = beforeCount - store.users.length;
+  saveStore();
+  console.log(`[Cleanup] Menghapus ${deletedCount} user yang belum terverifikasi`);
+  res.json({ 
+    success: true, 
+    message: `Berhasil menghapus ${deletedCount} user yang belum terverifikasi`,
+    deletedCount 
+  });
+});
+
+app.post('/api/admin/delete-user/:email', (req, res) => {
+  const email = req.params.email.toLowerCase();
+  const beforeCount = store.users.length;
+  store.users = store.users.filter(u => u.email.toLowerCase() !== email);
+  const deletedCount = beforeCount - store.users.length;
+  saveStore();
+  res.json({ 
+    success: true, 
+    message: deletedCount > 0 ? `User ${email} berhasil dihapus` : 'User tidak ditemukan',
+    deletedCount 
+  });
+});
 // Full-Stack Server Start & Dev Routing Setup
 async function startServer() {
   // Vite integration

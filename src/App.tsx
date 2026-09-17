@@ -206,9 +206,6 @@ export default function App() {
  const handleRegisterSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setAuthError('');
-  
-  console.log('[UI] Mencoba registrasi dengan email:', regEmail);
-  
   try {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
@@ -222,20 +219,16 @@ export default function App() {
     });
 
     const result = await response.json();
-    console.log('[UI] Response dari server:', result);
-    
     if (!response.ok) {
-      console.error('[UI] Error registrasi:', result.error);
       throw new Error(result.error || 'Pendaftaran gagal.');
     }
     
+    // Tampilkan modal verifikasi - TANPA sandbox OTP
     setVerifyEmail(regEmail);
-    setSandboxOTP(result.undefined);
-    setShowAuthCard(false);
+    // TIDAK ADA setSandboxOTP lagi!
     
   } catch (err: any) {
-    console.error('[UI] Catch error:', err.message);
-    setAuthError(err.message); // Ini akan tampil di UI
+    setAuthError(err.message);
   }
 };
 
@@ -819,19 +812,13 @@ export default function App() {
       </main>
 
       {/* OTP email verification modal popup */}
-      {verifyEmail && (
-        <EmailVerificationModal
-          email={verifyEmail}
-          sandboxOTP={sandboxOTP}
-          onSuccess={handleVerificationSuccess}
-          onClose={() => {
-            console.log("👁️ [DEBUG] Tombol Batal diklik, menutup modal");
-            setVerifyEmail(null);
-            setSandboxOTP(undefined);
-            setShowAuthCard(false);
-          }}
-        />
-      )}
+     {verifyEmail && (
+  <EmailVerificationModal
+    email={verifyEmail}
+    onSuccess={handleVerificationSuccess}
+    onClose={() => setVerifyEmail(null)}
+  />
+)}
 
       {/* Change Password Modal Dashboard popup */}
       {showChangePasswordModal && (

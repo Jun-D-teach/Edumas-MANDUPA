@@ -3,11 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState } from 'react';
-import { Mail, CheckCircle2, ShieldCheck, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
+import { Mail, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 
 interface EmailVerificationModalProps {
   email: string;
-  sandboxOTP?: string;
   onSuccess: (verifiedUser: any) => void;
   onClose: () => void;
 }
@@ -51,13 +50,9 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     }
   };
 
-  // Sembunyikan Sandbox OTP di production (online)
-  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" id="otp-verification-dialog">
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
       <div className="relative bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-100 overflow-hidden">
-        {/* Decorative top ribbon */}
         <div className="h-2 bg-emerald-600 w-full" />
         <div className="p-6 md:p-8">
           <div className="text-center">
@@ -77,22 +72,9 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
             </p>
           </div>
 
-          {/* Sandbox Overrides helper - HANYA tampil di localhost/development */}
-          {isDevelopment && sandboxOTP && !success && (
-            <div className="mt-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-              <span className="font-bold block mb-1">💡 Petunjuk Pengujian Sandbox:</span>
-              Jika Anda belum menautkan Google Apps Script, gunakan kode OTP Bypass di bawah ini untuk mensimulasikan proses verifikasi:
-              <div className="mt-2 text-center">
-                <span className="font-mono text-lg font-extrabold tracking-wider bg-white border border-amber-300 px-4 py-1.5 rounded-lg inline-block">
-                  {sandboxOTP}
-                </span>
-              </div>
-            </div>
-          )}
-
           {error && (
             <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
-              ⚠️ {error}
+              ️ {error}
             </div>
           )}
 
