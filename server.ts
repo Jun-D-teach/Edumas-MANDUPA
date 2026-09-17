@@ -510,42 +510,15 @@ app.post('/api/auth/register', async (req, res) => {
   
   const emailLower = email.toLowerCase().trim();
   
-  // 1. Cek di local store
+  // Cek duplikat di local store
   const existsLocal = store.users.find(u => u.email.toLowerCase() === emailLower);
-  
-  // 2. Cek juga di Google Sheets (jika GAS configured)
-  let existsInSheets = false;
-  if (store.gasUrl) {
-    try {
-      const response = await fetch(store.gasUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'checkEmailExists', 
-          email: emailLower 
-        })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        existsInSheets = result.exists || false;
-        console.log('[Register] Email check GAS result:', result);
-      }
-    } catch (err) {
-      console.error('[Register] Failed to check email in GAS:', err);
-    }
+  if (existsLocal) {
+    return res.status(400).json({ error: 'Email sudah terdaftar di sistem.' });
   }
   
-  // Reject jika email sudah ada di mana saja
-  if (existsLocal || existsInSheets) {
-    console.log('[Register] Email sudah terdaftar:', emailLower);
-    return res.status(400).json({ 
-      error: 'Email sudah terdaftar di sistem. Silakan login atau gunakan email lain.' 
-    });
-  }
-  
-  // Generate 6 digit OTP Verification
+  // Generate 6 digit OTP
   const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  
   const newUser: User = {
     id: 'u-' + Math.random().toString(36).substr(2, 9),
     name,
@@ -557,57 +530,96 @@ app.post('/api/auth/register', async (req, res) => {
     createdAt: new Date().toISOString()
   };
   
+  // Simpan ke local store dulu
   store.users.push(newUser);
   saveStore();
   
-  // Try to send actual email via GAS
-  let emailSent = false;
+  // Kirim ke Google Sheets via GAS
   if (store.gasUrl) {
-    const response = await syncToGAS('sendVerification', {
-      email: newUser.email,
-      name: newUser.name,
-      code: verificationCode
-    });
-    if (response && response.success) {
-      emailSent = true;
+    try {
+      // 1. Tambahkan user ke sheet
+      await fetch(store.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'addUser', 
+          data: newUser 
+        })
+      });
+      
+      // 2. Kirim email verifikasi
+      const emailResponse = await fetch(store.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'sendVerification', 
+          data: {
+            email: newUser.email,
+            name: newUser.name,
+            code: verificationCode
+          }
+        })
+      });
+      
+      const emailResult = await emailResponse.json();
+      console.log('[Register] Email result:', emailResult);
+      
+    } catch (err) {
+      console.error('[Register] GAS error:', err);
     }
   }
   
   res.json({
     success: true,
-    message: 'Registrasi berhasil. Kode verifikasi telah dikirim.',
+    message: 'Registrasi berhasil. Kode verifikasi telah dikirim ke email.',
     email: newUser.email,
-    sandboxOTP: verificationCode,
-    emailSent
+    sandboxOTP: verificationCode // Untuk testing
   });
 });
 
-app.post('/api/auth/verify', (req, res) => {
+app.post('/api/auth/verify', async (req, res) => {
   const { email, code } = req.body;
+  
   if (!email || !code) {
     return res.status(400).json({ error: 'Email dan Kode Verifikasi wajib diisi' });
   }
-
+  
+  // Cari user di local store
   const userIndex = store.users.findIndex(u => u.email.toLowerCase() === email.trim().toLowerCase());
   if (userIndex === -1) {
     return res.status(404).json({ error: 'Email tidak ditemukan.' });
   }
-
+  
   const user = store.users[userIndex];
+  
+  // Verifikasi kode
   if (user.verificationCode === code.trim()) {
+    // Update local store
     user.isVerified = true;
     delete user.verificationCode;
     saveStore();
-
-    // Sync to GAS users sheet
-    syncToGAS('addUser', user);
-
+    
+    // Update di Google Sheets
+    if (store.gasUrl) {
+      try {
+        await fetch(store.gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            action: 'verifyUser', 
+            data: { email: user.email, code: code.trim() }
+          })
+        });
+      } catch (err) {
+        console.error('[Verify] GAS error:', err);
+      }
+    }
+    
     return res.json({ success: true, user });
   } else {
     return res.status(400).json({ error: 'Kode verifikasi salah atau kadaluarsa.' });
   }
 });
-
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {

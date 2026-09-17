@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
 import React, { useState } from 'react';
 import { Mail, CheckCircle2, ShieldCheck, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 
@@ -30,27 +29,22 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
       setError('Kode PIN harus berisi 6 digit angka.');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       const response = await fetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: code.trim() })
       });
-
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || 'Gagal melakukan verifikasi.');
       }
-
       setSuccess(true);
       setTimeout(() => {
         onSuccess(result.user);
       }, 1500);
-
     } catch (err: any) {
       setError(err.message || 'Koneksi gagal.');
     } finally {
@@ -58,12 +52,14 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     }
   };
 
+  // Sembunyikan Sandbox OTP di production (online)
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" id="otp-verification-dialog">
       <div className="relative bg-white rounded-2xl max-w-md w-full shadow-xl border border-slate-100 overflow-hidden">
         {/* Decorative top ribbon */}
         <div className="h-2 bg-emerald-600 w-full" />
-
         <div className="p-6 md:p-8">
           <div className="text-center">
             <div className="mx-auto w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
@@ -73,7 +69,6 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
                 <Mail className="w-6 h-6" />
               )}
             </div>
-
             <h3 className="text-xl font-bold text-slate-800">Verifikasi Email Anda</h3>
             <p className="text-xs text-slate-500 mt-2">
               Sistem telah mendistribusikan kode verifikasi pendaftaran akun Anda ke email:
@@ -83,19 +78,18 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
             </p>
           </div>
 
-          {/* Sandbox Overrides helper */}
-          {/* Sandbox Overrides helper - Hanya tampil di development */}
-{import.meta.env.DEV && sandboxOTP && !success && (
-  <div className="mt-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
-    <span className="font-bold block mb-1">💡 Petunjuk Pengujian Sandbox:</span>
-    Jika Anda belum menautkan Google Apps Script, gunakan kode OTP Bypass di bawah ini untuk mensimulasikan proses verifikasi:
-    <div className="mt-2 text-center">
-      <span className="font-mono text-lg font-extrabold tracking-wider bg-white border border-amber-300 px-4 py-1.5 rounded-lg inline-block">
-        {sandboxOTP}
-      </span>
-    </div>
-  </div>
-)}
+          {/* Sandbox Overrides helper - HANYA tampil di localhost/development */}
+          {isDevelopment && sandboxOTP && !success && (
+            <div className="mt-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+              <span className="font-bold block mb-1">💡 Petunjuk Pengujian Sandbox:</span>
+              Jika Anda belum menautkan Google Apps Script, gunakan kode OTP Bypass di bawah ini untuk mensimulasikan proses verifikasi:
+              <div className="mt-2 text-center">
+                <span className="font-mono text-lg font-extrabold tracking-wider bg-white border border-amber-300 px-4 py-1.5 rounded-lg inline-block">
+                  {sandboxOTP}
+                </span>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
@@ -125,7 +119,6 @@ export const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
                   autoFocus
                 />
               </div>
-
               <button
                 type="submit"
                 disabled={loading}
