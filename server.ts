@@ -503,19 +503,45 @@ app.get('/api/logo.png', (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password, role } = req.body;
+  
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Nama, Email, dan Password wajib diisi.' });
   }
-
-  // Check if user already exists
-  const exists = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (exists) {
-    return res.status(400).json({ error: 'Email sudah terdaftar di sistem.' });
+  
+  // 1. Cek di local store
+  const existsLocal = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  
+  // 2. Cek juga di Google Sheets (jika GAS configured)
+  let existsInSheets = false;
+  if (store.gasUrl) {
+    try {
+      const response = await fetch(store.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'checkEmailExists', 
+          email: email.toLowerCase() 
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        existsInSheets = result.exists || false;
+      }
+    } catch (err) {
+      console.error('Failed to check email in GAS:', err);
+    }
   }
-
+  
+  // Reject jika email sudah ada di mana saja
+  if (existsLocal || existsInSheets) {
+    return res.status(400).json({ 
+      error: 'Email sudah terdaftar di sistem. Silakan login atau gunakan email lain.' 
+    });
+  }
+  
   // Generate 6 digit OTP Verification
   const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
   const newUser: User = {
     id: 'u-' + Math.random().toString(36).substr(2, 9),
     name,
@@ -526,10 +552,10 @@ app.post('/api/auth/register', async (req, res) => {
     verificationCode,
     createdAt: new Date().toISOString()
   };
-
+  
   store.users.push(newUser);
   saveStore();
-
+  
   // Try to send actual email via GAS
   let emailSent = false;
   if (store.gasUrl) {
@@ -542,13 +568,12 @@ app.post('/api/auth/register', async (req, res) => {
       emailSent = true;
     }
   }
-
-  // In the response, we also send the OTP for sandbox simulation testing (just in case they haven't set up GAS yet!)
+  
   res.json({
     success: true,
     message: 'Registrasi berhasil. Kode verifikasi telah dikirim.',
     email: newUser.email,
-    sandboxOTP: verificationCode, // handy for testing without GAS configured!
+    sandboxOTP: verificationCode,
     emailSent
   });
 });
