@@ -503,118 +503,82 @@ app.get('/api/logo.png', (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password, role } = req.body;
-  
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Nama, Email, dan Password wajib diisi.' });
   }
-  
-  const emailLower = email.toLowerCase().trim();
-  
-  // Cek duplikat di local store
-  const existsLocal = store.users.find(u => u.email.toLowerCase() === emailLower);
-  if (existsLocal) {
-    return res.status(400).json({ error: 'Email sudah terdaftar di sistem. Silakan login atau gunakan email lain.' });
+
+  // Check if user already exists
+  const exists = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (exists) {
+    return res.status(400).json({ error: 'Email sudah terdaftar di sistem.' });
   }
-  
-  // Generate 6 digit OTP
+
+  // Generate 6 digit OTP Verification
   const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-  
+
   const newUser: User = {
     id: 'u-' + Math.random().toString(36).substr(2, 9),
     name,
-    email: emailLower,
+    email: email.toLowerCase(),
     role: (role as UserRole) || 'pelapor',
     isVerified: false,
     password,
     verificationCode,
     createdAt: new Date().toISOString()
   };
-  
+
   store.users.push(newUser);
   saveStore();
-  
-  console.log('[Register] User baru dibuat:', newUser.email);
-  console.log('[Register] GAS URL:', store.gasUrl ? 'ADA' : 'KOSONG');
-  
-  // Kirim email via GAS
+
+  // Try to send actual email via GAS
+  let emailSent = false;
   if (store.gasUrl) {
-    try {
-      console.log('[Register] Mengirim email via GAS...');
-      const gasResponse = await fetch(store.gasUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'sendVerification', 
-          data: {
-            email: newUser.email,
-            name: newUser.name,
-            code: verificationCode
-          }
-        })
-      });
-      
-      if (gasResponse.ok) {
-        const result = await gasResponse.json();
-        console.log('[Register] GAS response:', result);
-      }
-    } catch (err) {
-      console.error('[Register] Error GAS:', err);
+    const response = await syncToGAS('sendVerification', {
+      email: newUser.email,
+      name: newUser.name,
+      code: verificationCode
+    });
+    if (response && response.success) {
+      emailSent = true;
     }
-  } else {
-    console.warn('[Register] ⚠️ Google Apps Script URL belum dikonfigurasi.');
-    console.log('[Register] OTP untuk testing:', verificationCode);
   }
-  
-  // RESPONSE - TANPA SANDBOX OTP!
+
+  // In the response, we also send the OTP for sandbox simulation testing (just in case they haven't set up GAS yet!)
   res.json({
     success: true,
-    message: 'Registrasi berhasil. Kode verifikasi telah dikirim ke email Anda.'
+    message: 'Registrasi berhasil. Kode verifikasi telah dikirim.',
+    email: newUser.email,
+    sandboxOTP: verificationCode, // handy for testing without GAS configured!
+    emailSent
   });
 });
 
-app.post('/api/auth/verify', async (req, res) => {
+app.post('/api/auth/verify', (req, res) => {
   const { email, code } = req.body;
-  
   if (!email || !code) {
     return res.status(400).json({ error: 'Email dan Kode Verifikasi wajib diisi' });
   }
-  
-  // Cari user di local store
+
   const userIndex = store.users.findIndex(u => u.email.toLowerCase() === email.trim().toLowerCase());
   if (userIndex === -1) {
     return res.status(404).json({ error: 'Email tidak ditemukan.' });
   }
-  
+
   const user = store.users[userIndex];
-  
-  // Verifikasi kode
   if (user.verificationCode === code.trim()) {
-    // Update local store
     user.isVerified = true;
     delete user.verificationCode;
     saveStore();
-    
-    // Update di Google Sheets
-    if (store.gasUrl) {
-      try {
-        await fetch(store.gasUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            action: 'verifyUser', 
-            data: { email: user.email, code: code.trim() }
-          })
-        });
-      } catch (err) {
-        console.error('[Verify] GAS error:', err);
-      }
-    }
-    
+
+    // Sync to GAS users sheet
+    syncToGAS('addUser', user);
+
     return res.json({ success: true, user });
   } else {
     return res.status(400).json({ error: 'Kode verifikasi salah atau kadaluarsa.' });
   }
-}); 
+});
+
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -1079,40 +1043,7 @@ app.post('/api/complaints/:id/action', async (req, res) => {
 
   res.json({ success: true, complaint });
 });
-// === ENDPOINT CLEANUP USER STUCK ===
-app.get('/api/admin/unverified-users', (req, res) => {
-  const unverified = store.users.filter(u => !u.isVerified);
-  res.json({ 
-    total: unverified.length,
-    users: unverified.map(u => ({ id: u.id, email: u.email, name: u.name, createdAt: u.createdAt }))
-  });
-});
 
-app.post('/api/admin/cleanup-unverified', (req, res) => {
-  const beforeCount = store.users.length;
-  store.users = store.users.filter(u => u.isVerified === true);
-  const deletedCount = beforeCount - store.users.length;
-  saveStore();
-  console.log(`[Cleanup] Menghapus ${deletedCount} user yang belum terverifikasi`);
-  res.json({ 
-    success: true, 
-    message: `Berhasil menghapus ${deletedCount} user yang belum terverifikasi`,
-    deletedCount 
-  });
-});
-
-app.post('/api/admin/delete-user/:email', (req, res) => {
-  const email = req.params.email.toLowerCase();
-  const beforeCount = store.users.length;
-  store.users = store.users.filter(u => u.email.toLowerCase() !== email);
-  const deletedCount = beforeCount - store.users.length;
-  saveStore();
-  res.json({ 
-    success: true, 
-    message: deletedCount > 0 ? `User ${email} berhasil dihapus` : 'User tidak ditemukan',
-    deletedCount 
-  });
-});
 // Full-Stack Server Start & Dev Routing Setup
 async function startServer() {
   // Vite integration

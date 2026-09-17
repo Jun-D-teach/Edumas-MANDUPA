@@ -56,15 +56,7 @@ export default function App() {
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
     const [authError, setAuthError] = useState('');
 
-  // Debugging State Changes
-  useEffect(() => {
-    if (verifyEmail) {
-      console.log("👁️ [DEBUG] Modal OTP seharusnya TERBUKA untuk:", verifyEmail);
-      console.log("👁️ [DEBUG] Sandbox OTP:", sandboxOTP);
-    } else {
-      console.log("👁️ [DEBUG] Modal OTP TUTUP (verifyEmail null)");
-    }
-  }, [verifyEmail, sandboxOTP]);
+
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -224,18 +216,17 @@ const handleRegisterSubmit = async (e: React.FormEvent) => {
     
     // Tampilkan modal verifikasi - TANPA sandbox OTP
     setVerifyEmail(regEmail);
-    // TIDAK ADA setSandboxOTP!
     
   } catch (err: any) {
     setAuthError(err.message);
   }
 };
-  const handleVerificationSuccess = (verifiedUser: User) => {
-    setUser(verifiedUser);
-    setVerifyEmail(null);
-    setShowAuthCard(false);
-    clearAuthForms();
-  };
+ const handleVerificationSuccess = (verifiedUser: User) => {
+  setUser(verifiedUser);
+  setVerifyEmail(null);
+  setShowAuthCard(false);
+  clearAuthForms();
+};
 
   const handleForgotRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,9 +240,7 @@ const handleRegisterSubmit = async (e: React.FormEvent) => {
       const data = await response.json();
       if (response.ok) {
         setForgotStep(2);
-        if (data.sandboxOTP) {
-          setSandboxOTP(data.sandboxOTP);
-        }
+        
         setForgotSuccessMessage('Kode OTP pemulihan kata sandi Anda berhasil disalurkan ke kotak masuk email Anda!');
       } else {
         setAuthError(data.error || 'Email tidak terdaftar atau gagal mengirim OTP.');
@@ -750,13 +739,7 @@ const handleRegisterSubmit = async (e: React.FormEvent) => {
                       <p className="text-slate-500 mb-2 leading-relaxed font-medium">
                         Masukkan kode OTP pelindung beserta Kata Sandi Baru Anda di bawah ini:
                       </p>
-                      {sandboxOTP && (
-                        <div className="p-3.5 bg-amber-50 border border-amber-250 rounded-2xl text-amber-800 text-xs text-left shadow-xs">
-                          <p className="font-bold flex items-center gap-1 text-[11px] text-amber-900">⚡ Kode OTP Pemulihan (Sandbox):</p>
-                          <p className="font-mono text-center text-lg font-black tracking-widest text-amber-950 my-1 select-all">{sandboxOTP}</p>
-                          <p className="text-[10px] text-amber-600">Gunakan kode ini jika SMTP / Apps Script tidak diaktifkan.</p>
-                        </div>
-                      )}
+                      
                       <div>
                         <label className="block text-slate-500 font-bold mb-1.5 font-mono text-[10px]">6 DIGIT OTP VERIFIKASI PEMULIHAN</label>
                         <input
@@ -809,7 +792,7 @@ const handleRegisterSubmit = async (e: React.FormEvent) => {
       </main>
 
       {/* OTP email verification modal popup */}
-     {verifyEmail && (
+ {verifyEmail && (
   <EmailVerificationModal
     email={verifyEmail}
     onSuccess={handleVerificationSuccess}
