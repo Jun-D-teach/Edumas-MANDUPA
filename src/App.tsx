@@ -203,43 +203,41 @@ export default function App() {
     }
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
+ const handleRegisterSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setAuthError('');
+  
+  console.log('[UI] Mencoba registrasi dengan email:', regEmail);
+  
+  try {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: regName,
+        email: regEmail,
+        password: regPassword,
+        role: regRole
+      })
+    });
+
+    const result = await response.json();
+    console.log('[UI] Response dari server:', result);
     
-    console.log("🚀 [DEBUG] Mencoba registrasi dengan email:", regEmail);
-    
-    try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: regName,
-          email: regEmail,
-          password: regPassword,
-          role: regRole
-        })
-      });
-
-      const result = await response.json();
-      console.log("📡 [DEBUG] Response dari server:", result);
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Pendaftaran gagal.');
-      }
-
-      console.log("✅ [DEBUG] Registrasi berhasil! Menampilkan modal OTP...");
-      
-      // PENTING: Set state modal DAN tutup form registrasi agar tidak bentrok
-      setVerifyEmail(regEmail);
-      setSandboxOTP(result.sandboxOTP);
-      setShowAuthCard(false); 
-      
-    } catch (err: any) {
-      console.error("❌ [DEBUG] Error registrasi:", err);
-      setAuthError(err.message);
+    if (!response.ok) {
+      console.error('[UI] Error registrasi:', result.error);
+      throw new Error(result.error || 'Pendaftaran gagal.');
     }
-  };
+    
+    setVerifyEmail(regEmail);
+    setSandboxOTP(result.sandboxOTP);
+    setShowAuthCard(false);
+    
+  } catch (err: any) {
+    console.error('[UI] Catch error:', err.message);
+    setAuthError(err.message); // Ini akan tampil di UI
+  }
+};
 
   const handleVerificationSuccess = (verifiedUser: User) => {
     setUser(verifiedUser);
@@ -661,6 +659,11 @@ export default function App() {
                   </form>
                 ) : authMode === 'register' ? (
                   <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
+                     {authError && (
+      <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center mb-4">
+        ⚠️ {authError}
+      </div>
+    )}
                     <div>
                       <label className="block text-slate-500 font-bold mb-1.5">Nama Lengkap Anda</label>
                       <input

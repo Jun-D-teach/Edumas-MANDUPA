@@ -1,0 +1,200 @@
+{
+  "users": [
+    {
+      "id": "u-1",
+      "email": "admin@madrasah.sch.id",
+      "name": "Ustadz Ahmad Fauzi (Admin)",
+      "role": "admin",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.435Z"
+    },
+    {
+      "id": "u-2",
+      "email": "ketua@madrasah.sch.id",
+      "name": "H. Syarifuddin, M.Pd (Ketua Tim)",
+      "role": "ketuatim",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    },
+    {
+      "id": "u-3",
+      "email": "kesiswaan@madrasah.sch.id",
+      "name": "Ustadzah Halimah (Waka Kesiswaan)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    },
+    {
+      "id": "u-3b",
+      "email": "kurikulum@madrasah.sch.id",
+      "name": "Ustadz Mansur (Waka Kurikulum)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    },
+    {
+      "id": "u-3c",
+      "email": "sarpras@madrasah.sch.id",
+      "name": "H. Sobirin, M.Si (Waka Sarana Prasarana)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    },
+    {
+      "id": "u-3d",
+      "email": "humas@madrasah.sch.id",
+      "name": "Dra. Hj. Nurjanah (Waka Humas)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    },
+    {
+      "id": "u-3e",
+      "email": "keamanan@madrasah.sch.id",
+      "name": "Pak Satrio (Waka Keamanan)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    },
+    {
+      "id": "u-3f",
+      "email": "tu@madrasah.sch.id",
+      "name": "Hj. Aminah, S.Sos (Kaur TU)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    },
+    {
+      "id": "u-4",
+      "email": "budi@siswa.sch.id",
+      "name": "Budi Santoso (Siswa VII-A)",
+      "role": "pelapor",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-16T07:44:14.436Z"
+    }
+  ],
+  "complaints": [
+    {
+      "id": "c-1",
+      "ticketNumber": "KM-20260615-001",
+      "pelaporName": "Budi Santoso (Siswa VII-A)",
+      "pelaporEmail": "budi@siswa.sch.id",
+      "category": "Pengaduan Pelanggaran",
+      "subCategory": "Perundungan (Bullying)",
+      "title": "Pemalakan di Belakang Kelas IX-C",
+      "description": "Saya melihat beberapa siswa kelas IX melakukan pemalakan uang jajan kepada adik kelas VII selepas jam istirahat kedua di lorong sempit belakang kelas IX-C. Mohon ditindaklanjuti demi keamanan siswa.",
+      "anonymous": false,
+      "status": "FORWARDED",
+      "assignedDepartment": "Kesiswaan",
+      "createdAt": "2026-09-15T07:44:14.436Z",
+      "updatedAt": "2026-09-15T11:44:14.436Z"
+    },
+    {
+      "id": "c-2",
+      "ticketNumber": "KM-20260615-002",
+      "pelaporName": "Anonim",
+      "pelaporEmail": "",
+      "category": "Informasi",
+      "subCategory": "Fasilitas Kelas",
+      "title": "Pertanyaan Jadwal Perbaikan AC Mushola",
+      "description": "Bismillah, ustadz/ustadzah. Mohon informasi kapan pendingin ruangan (AC) di Mushola Putra diperbaiki? Kondisinya sekarang mati dan cukup panas saat sholat berjamaah dzuhur. Terima kasih.",
+      "anonymous": true,
+      "status": "INFO_ANSWERED",
+      "directInfoAnswer": "Jazakumullah khairan atas laporannya. AC mushola putra dijadwalkan akan diperbaiki oleh teknisi eksternal pada hari Rabu besok lusa. Sementara waktu, jendela mushola kami buka lebar dan kipas angin tambahan telah disediakan.",
+      "createdAt": "2026-09-15T19:44:14.436Z",
+      "updatedAt": "2026-09-15T20:44:14.436Z"
+    },
+    {
+      "id": "c-3",
+      "ticketNumber": "KM-20260615-003",
+      "pelaporName": "Siti Rahma (Siswi VIII-B)",
+      "pelaporEmail": "siti@siswa.sch.id",
+      "category": "Pengaduan Pelanggaran",
+      "subCategory": "Sarana & Prasarana",
+      "title": "Atap Bocor di Laboratorium IPA",
+      "description": "Permisi, ingin mengadukan bahwa atap di bagian pojok kiri Laboratorium IPA bocor cukup parah saat hujan deras kemarin siang, airnya mengenai beberapa meja praktikum dan dikhawatirkan merusak peralatan laboratorium.",
+      "anonymous": false,
+      "status": "DEPT_RESPONDED",
+      "assignedDepartment": "Sarana Prasarana",
+      "departmentResponse": "Lokasi bocor sudah kami survei. Genteng yang bergeser telah dirapikan sementara oleh staf Sarpras sekolah. Perbaikan plafon yang lapuk akibat air direncanakan akhir pekan ini agar tidak mengganggu kegiatan belajar mengajar.",
+      "createdAt": "2026-09-16T01:44:14.436Z",
+      "updatedAt": "2026-09-16T05:44:14.436Z"
+    }
+  ],
+  "logs": [
+    {
+      "id": "l-1",
+      "complaintId": "c-1",
+      "actorName": "Budi Santoso",
+      "actorRole": "pelapor",
+      "action": "MEMBUAT_ADUAN",
+      "notes": "Aduan pertama kali dikirimkan oleh siswa ke sistem.",
+      "timestamp": "2026-09-15T07:44:14.436Z"
+    },
+    {
+      "id": "l-2",
+      "complaintId": "c-1",
+      "actorName": "Ustadz Ahmad Fauzi (Admin)",
+      "actorRole": "admin",
+      "action": "KLASIFIKASI_DAN_TERUSKAN",
+      "notes": "Diverifikasi sebagai Pengaduan Pelanggaran dan diteruskan ke Bidang Kesiswaan untuk evaluasi.",
+      "timestamp": "2026-09-15T11:44:14.436Z"
+    },
+    {
+      "id": "l-3",
+      "complaintId": "c-2",
+      "actorName": "Sistem",
+      "actorRole": "pelapor",
+      "action": "MEMBUAT_ADUAN",
+      "notes": "Aduan anonim berhasil diajukan.",
+      "timestamp": "2026-09-15T19:44:14.436Z"
+    },
+    {
+      "id": "l-4",
+      "complaintId": "c-2",
+      "actorName": "Ustadz Ahmad Fauzi (Admin)",
+      "actorRole": "admin",
+      "action": "JAWAB_INFORMASI_LANGSUNG",
+      "notes": "Aduan berkategori Informasi, dijawab langsung dan diselesaikan oleh Admin.",
+      "timestamp": "2026-09-15T20:44:14.436Z"
+    },
+    {
+      "id": "l-5",
+      "complaintId": "c-3",
+      "actorName": "Siti Rahma",
+      "actorRole": "pelapor",
+      "action": "MEMBUAT_ADUAN",
+      "notes": "Aduan dikirim oleh Siswi.",
+      "timestamp": "2026-09-16T01:44:14.436Z"
+    },
+    {
+      "id": "l-6",
+      "complaintId": "c-3",
+      "actorName": "Ustadz Ahmad Fauzi (Admin)",
+      "actorRole": "admin",
+      "action": "KLASIFIKASI_DAN_TERUSKAN",
+      "notes": "Diteruskan ke Bidang Sarana & Prasarana.",
+      "timestamp": "2026-09-16T02:44:14.436Z"
+    },
+    {
+      "id": "l-7",
+      "complaintId": "c-3",
+      "actorName": "Waka Sarana Prasarana",
+      "actorRole": "bidang",
+      "action": "INPUT_TANGGAPAN_BIDANG",
+      "notes": "Memberikan tanggapan draf mengenai hasil survei genteng bocor dan rencana perbaikan.",
+      "timestamp": "2026-09-16T05:44:14.436Z"
+    }
+  ],
+  "notifications": [],
+  "gasUrl": ""
+}

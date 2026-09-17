@@ -508,8 +508,10 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(400).json({ error: 'Nama, Email, dan Password wajib diisi.' });
   }
   
+  const emailLower = email.toLowerCase().trim();
+  
   // 1. Cek di local store
-  const existsLocal = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  const existsLocal = store.users.find(u => u.email.toLowerCase() === emailLower);
   
   // 2. Cek juga di Google Sheets (jika GAS configured)
   let existsInSheets = false;
@@ -520,21 +522,23 @@ app.post('/api/auth/register', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'checkEmailExists', 
-          email: email.toLowerCase() 
+          email: emailLower 
         })
       });
       
       if (response.ok) {
         const result = await response.json();
         existsInSheets = result.exists || false;
+        console.log('[Register] Email check GAS result:', result);
       }
     } catch (err) {
-      console.error('Failed to check email in GAS:', err);
+      console.error('[Register] Failed to check email in GAS:', err);
     }
   }
   
   // Reject jika email sudah ada di mana saja
   if (existsLocal || existsInSheets) {
+    console.log('[Register] Email sudah terdaftar:', emailLower);
     return res.status(400).json({ 
       error: 'Email sudah terdaftar di sistem. Silakan login atau gunakan email lain.' 
     });
@@ -545,7 +549,7 @@ app.post('/api/auth/register', async (req, res) => {
   const newUser: User = {
     id: 'u-' + Math.random().toString(36).substr(2, 9),
     name,
-    email: email.toLowerCase(),
+    email: emailLower,
     role: (role as UserRole) || 'pelapor',
     isVerified: false,
     password,
