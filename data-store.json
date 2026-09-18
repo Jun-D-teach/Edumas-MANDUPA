@@ -3,11 +3,11 @@
     {
       "id": "u-1",
       "email": "admin@madrasah.sch.id",
-      "name": "Firdaus",
+      "name": "Ustadz Ahmad Fauzi (Admin)",
       "role": "admin",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.435Z"
+      "createdAt": "2026-09-18T22:51:04.745Z"
     },
     {
       "id": "u-2",
@@ -16,7 +16,7 @@
       "role": "ketuatim",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
     },
     {
       "id": "u-3",
@@ -25,7 +25,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
     },
     {
       "id": "u-3b",
@@ -34,7 +34,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
     },
     {
       "id": "u-3c",
@@ -43,7 +43,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
     },
     {
       "id": "u-3d",
@@ -52,7 +52,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
     },
     {
       "id": "u-3e",
@@ -61,7 +61,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
     },
     {
       "id": "u-3f",
@@ -70,7 +70,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
     },
     {
       "id": "u-4",
@@ -79,7 +79,57 @@
       "role": "pelapor",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-16T07:44:14.436Z"
+      "createdAt": "2026-09-18T22:51:04.746Z"
+    },
+    {
+      "id": "u-pvg7ye7ov",
+      "email": "firdaushadi444@gmail.com",
+      "name": "Firdaus Hamto Diningso",
+      "role": "pelapor",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-14T07:08:41.802Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-92rnjodtx",
+      "email": "dataumumjun@gmail.com",
+      "name": "Junaidi",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-15T12:57:08.710Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-k3g5j3gjh",
+      "email": "tamuptsp@gmail.com",
+      "name": "jook",
+      "role": "pelapor",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-17T03:51:38.145Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-4ix5q8k3r",
+      "email": "pusdigman2plg@gmail.com",
+      "name": "joko",
+      "role": "pelapor",
+      "isVerified": false,
+      "password": 123456,
+      "createdAt": "2026-09-17T04:24:22.667Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-720d6917e",
+      "email": "achmadfadil2@madrasah.kemenag.go.id",
+      "name": "jaki",
+      "role": "pelapor",
+      "isVerified": false,
+      "password": 123456,
+      "createdAt": "2026-09-17T04:30:10.326Z",
+      "whatsappNumber": ""
     }
   ],
   "complaints": [
@@ -95,8 +145,8 @@
       "anonymous": false,
       "status": "FORWARDED",
       "assignedDepartment": "Kesiswaan",
-      "createdAt": "2026-09-15T07:44:14.436Z",
-      "updatedAt": "2026-09-15T11:44:14.436Z"
+      "createdAt": "2026-09-17T22:51:04.746Z",
+      "updatedAt": "2026-09-18T02:51:04.746Z"
     },
     {
       "id": "c-2",
@@ -110,8 +160,8 @@
       "anonymous": true,
       "status": "INFO_ANSWERED",
       "directInfoAnswer": "Jazakumullah khairan atas laporannya. AC mushola putra dijadwalkan akan diperbaiki oleh teknisi eksternal pada hari Rabu besok lusa. Sementara waktu, jendela mushola kami buka lebar dan kipas angin tambahan telah disediakan.",
-      "createdAt": "2026-09-15T19:44:14.436Z",
-      "updatedAt": "2026-09-15T20:44:14.436Z"
+      "createdAt": "2026-09-18T10:51:04.746Z",
+      "updatedAt": "2026-09-18T11:51:04.746Z"
     },
     {
       "id": "c-3",
@@ -126,8 +176,8 @@
       "status": "DEPT_RESPONDED",
       "assignedDepartment": "Sarana Prasarana",
       "departmentResponse": "Lokasi bocor sudah kami survei. Genteng yang bergeser telah dirapikan sementara oleh staf Sarpras sekolah. Perbaikan plafon yang lapuk akibat air direncanakan akhir pekan ini agar tidak mengganggu kegiatan belajar mengajar.",
-      "createdAt": "2026-09-16T01:44:14.436Z",
-      "updatedAt": "2026-09-16T05:44:14.436Z"
+      "createdAt": "2026-09-18T16:51:04.746Z",
+      "updatedAt": "2026-09-18T20:51:04.746Z"
     }
   ],
   "logs": [
@@ -138,7 +188,7 @@
       "actorRole": "pelapor",
       "action": "MEMBUAT_ADUAN",
       "notes": "Aduan pertama kali dikirimkan oleh siswa ke sistem.",
-      "timestamp": "2026-09-15T07:44:14.436Z"
+      "timestamp": "2026-09-17T22:51:04.746Z"
     },
     {
       "id": "l-2",
@@ -147,7 +197,7 @@
       "actorRole": "admin",
       "action": "KLASIFIKASI_DAN_TERUSKAN",
       "notes": "Diverifikasi sebagai Pengaduan Pelanggaran dan diteruskan ke Bidang Kesiswaan untuk evaluasi.",
-      "timestamp": "2026-09-15T11:44:14.436Z"
+      "timestamp": "2026-09-18T02:51:04.746Z"
     },
     {
       "id": "l-3",
@@ -156,7 +206,7 @@
       "actorRole": "pelapor",
       "action": "MEMBUAT_ADUAN",
       "notes": "Aduan anonim berhasil diajukan.",
-      "timestamp": "2026-09-15T19:44:14.436Z"
+      "timestamp": "2026-09-18T10:51:04.746Z"
     },
     {
       "id": "l-4",
@@ -165,7 +215,7 @@
       "actorRole": "admin",
       "action": "JAWAB_INFORMASI_LANGSUNG",
       "notes": "Aduan berkategori Informasi, dijawab langsung dan diselesaikan oleh Admin.",
-      "timestamp": "2026-09-15T20:44:14.436Z"
+      "timestamp": "2026-09-18T11:51:04.746Z"
     },
     {
       "id": "l-5",
@@ -174,7 +224,7 @@
       "actorRole": "pelapor",
       "action": "MEMBUAT_ADUAN",
       "notes": "Aduan dikirim oleh Siswi.",
-      "timestamp": "2026-09-16T01:44:14.436Z"
+      "timestamp": "2026-09-18T16:51:04.746Z"
     },
     {
       "id": "l-6",
@@ -183,7 +233,7 @@
       "actorRole": "admin",
       "action": "KLASIFIKASI_DAN_TERUSKAN",
       "notes": "Diteruskan ke Bidang Sarana & Prasarana.",
-      "timestamp": "2026-09-16T02:44:14.436Z"
+      "timestamp": "2026-09-18T17:51:04.746Z"
     },
     {
       "id": "l-7",
@@ -192,9 +242,9 @@
       "actorRole": "bidang",
       "action": "INPUT_TANGGAPAN_BIDANG",
       "notes": "Memberikan tanggapan draf mengenai hasil survei genteng bocor dan rencana perbaikan.",
-      "timestamp": "2026-09-16T05:44:14.436Z"
+      "timestamp": "2026-09-18T20:51:04.746Z"
     }
   ],
   "notifications": [],
-  "gasUrl": ""
+  "gasUrl": "https://script.google.com/macros/s/AKfycbz4m-f-WgI6V__Ev75bQkBLenyop8oKZY7ZefhqIWR_YV4QG6JWCTBAEoAfBWd7YyDf/exec"
 }

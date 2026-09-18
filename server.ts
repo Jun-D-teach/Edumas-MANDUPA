@@ -503,52 +503,60 @@ app.get('/api/logo.png', (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password, role } = req.body;
+  
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Nama, Email, dan Password wajib diisi.' });
   }
-
+  
+  const emailLower = email.toLowerCase().trim();
+  
   // Check if user already exists
-  const exists = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  const exists = store.users.find(u => u.email.toLowerCase() === emailLower);
   if (exists) {
     return res.status(400).json({ error: 'Email sudah terdaftar di sistem.' });
   }
-
+  
   // Generate 6 digit OTP Verification
   const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
   const newUser: User = {
     id: 'u-' + Math.random().toString(36).substr(2, 9),
     name,
-    email: email.toLowerCase(),
+    email: emailLower,
     role: (role as UserRole) || 'pelapor',
     isVerified: false,
     password,
     verificationCode,
     createdAt: new Date().toISOString()
   };
-
+  
+  // HANYA push SEKALI (hapus duplikasi)
   store.users.push(newUser);
   saveStore();
-
+  
   // Try to send actual email via GAS
   let emailSent = false;
   if (store.gasUrl) {
-    const response = await syncToGAS('sendVerification', {
-      email: newUser.email,
-      name: newUser.name,
-      code: verificationCode
-    });
-    if (response && response.success) {
-      emailSent = true;
+    try {
+      const response = await syncToGAS('sendVerification', {
+        email: newUser.email,
+        name: newUser.name,
+        code: verificationCode
+      });
+      if (response && response.success) {
+        emailSent = true;
+      }
+      // Simpan ke GAS (addUser)
+      await syncToGAS('addUser', newUser);
+    } catch (err) {
+      console.error('[Register] Error sync ke GAS:', err);
     }
   }
-
-  // In the response, we also send the OTP for sandbox simulation testing (just in case they haven't set up GAS yet!)
+  
   res.json({
     success: true,
     message: 'Registrasi berhasil. Kode verifikasi telah dikirim.',
     email: newUser.email,
-    sandboxOTP: verificationCode, // handy for testing without GAS configured!
+    sandboxOTP: verificationCode,
     emailSent
   });
 });
@@ -684,23 +692,64 @@ app.post('/api/auth/forgot-password-reset', (req, res) => {
 });
 
 // Admin Account Monitoring and Management
-app.get('/api/admin/users', (req, res) => {
-  // Return waka and ketua tim accounts, plus any other registered users if wanted, for oversight
-  res.json(store.users);
-});
+// Endpoint untuk ambil semua user
+// Admin Account Monitoring and Management
+app.get('/api/admin/users', async (req, res) => {
+  // SELALU gunakan data dari local store (yang sudah include default users)
+  let users = [...store.users];
 
-app.post('/api/admin/change-user-password', (req, res) => {
-  const { userId, newPassword } = req.body;
-  if (!userId || !newPassword) {
-    return res.status(400).json({ error: 'Data tidak lengkap.' });
+  // Jika GAS configured, MERGE data dari spreadsheet (jangan replace!)
+  if (store.gasUrl) {
+    try {
+      console.log('[Users] Mengambil data user dari Google Sheets untuk merge...');
+      const response = await fetch(store.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getUsers' })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('[Users] Response GAS:', result);
+
+        if (result.success && result.users && Array.isArray(result.users)) {
+          // MERGE: gabungkan user dari GAS yang belum ada di local
+          const gasUsers = result.users;
+          let addedCount = 0;
+
+          gasUsers.forEach(gasUser => {
+            const exists = users.find(u => 
+              u.id === gasUser.id || 
+              u.email.toLowerCase() === gasUser.email.toLowerCase()
+            );
+            if (!exists) {
+              users.push(gasUser);
+              addedCount++;
+              console.log(`[Users] Merge user baru dari GAS: ${gasUser.email}`);
+            }
+          });
+
+          if (addedCount > 0) {
+            console.log(`[Users] ${addedCount} user baru ditambahkan dari GAS`);
+            store.users = users;
+            saveStore();
+          } else {
+            console.log('[Users] Tidak ada user baru dari GAS');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Users] Error mengambil dari GAS (gunakan data lokal):', err);
+    }
   }
-  const targetUser = store.users.find(u => u.id === userId);
-  if (!targetUser) {
-    return res.status(404).json({ error: 'Akun petugas tidak ditemukan.' });
-  }
-  targetUser.password = newPassword;
-  saveStore();
-  return res.json({ success: true, message: `Kata sandi akun ${targetUser.name} berhasil diperbarui.` });
+
+  // Filter hanya admin, bidang, dan ketuatim untuk tampilan manajemen
+  const filteredUsers = users.filter(u =>
+    u.role === 'admin' || u.role === 'bidang' || u.role === 'ketuatim'
+  );
+
+  console.log(`[Users] Returning ${filteredUsers.length} petugas (total users: ${users.length})`);
+  res.json(filteredUsers);
 });
 
 app.post('/api/admin/update-user', (req, res) => {
@@ -718,7 +767,33 @@ app.post('/api/admin/update-user', (req, res) => {
   saveStore();
   return res.json({ success: true, message: `Data akun ${targetUser.name} berhasil diperbarui.` });
 });
-
+// Endpoint untuk hapus user
+app.delete('/api/admin/delete-user/:userId', (req, res) => {
+  const userId = req.params.userId;
+  const userIndex = store.users.findIndex(u => u.id === userId);
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'User tidak ditemukan.' });
+  }
+  const deletedUser = store.users[userIndex];
+  
+  // JANGAN hapus akun yang sedang login - HAPUS BARIS INI (user tidak defined)
+  // if (deletedUser.id === user.id) {  
+  //   return res.status(400).json({ error: 'Tidak dapat menghapus akun yang sedang digunakan.' });
+  // }
+  
+  store.users.splice(userIndex, 1);
+  saveStore();
+  
+  if (store.gasUrl) {
+    syncToGAS('deleteUser', { userId, email: deletedUser.email });
+  }
+  
+  console.log(`[Admin] User ${deletedUser.name} (${deletedUser.email}) berhasil dihapus`);
+  return res.json({
+    success: true,
+    message: `Akun ${deletedUser.name} berhasil dihapus dari sistem.`
+  });
+});
 app.get('/api/notifications', (req, res) => {
   res.json(store.notifications || []);
 });
@@ -774,7 +849,84 @@ app.get('/api/complaints/:id/logs', (req, res) => {
 app.get('/api/logs', (req, res) => {
   res.json(store.logs || []);
 });
+// Fungsi untuk sync data dari GAS ke local store
+// Fungsi untuk sync data dari GAS ke local store (saat startup)
+async function syncUsersFromGAS() {
+  if (!store.gasUrl) {
+    console.log('[Sync] GAS URL tidak dikonfigurasi, menggunakan data lokal');
+    return;
+  }
 
+  try {
+    console.log('[Sync] Mengsinkronisasi data user dari Google Sheets...');
+    const response = await fetch(store.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'getUsers' })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      
+      if (result.success && result.users && Array.isArray(result.users) && result.users.length > 0) {
+        console.log(`[Sync] Ditemukan ${result.users.length} user di spreadsheet`);
+        
+        const gasUsers = result.users;
+        let addedCount = 0;
+
+        // MERGE: tambahkan user dari GAS yang belum ada di local
+        gasUsers.forEach(gasUser => {
+          const exists = store.users.find(u => 
+            u.id === gasUser.id || 
+            u.email.toLowerCase() === gasUser.email.toLowerCase()
+          );
+          if (!exists) {
+            store.users.push(gasUser);
+            addedCount++;
+            console.log(`[Sync] Menambahkan user dari GAS: ${gasUser.email} (${gasUser.role})`);
+          }
+        });
+
+        if (addedCount > 0) {
+          saveStore();
+          console.log(`[Sync] Sinkronisasi selesai. ${addedCount} user baru ditambahkan.`);
+        } else {
+          console.log('[Sync] Semua user dari GAS sudah ada di local.');
+        }
+      } else {
+        console.log('[Sync] Spreadsheet kosong atau tidak ada user.');
+      }
+    }
+  } catch (err) {
+    console.error('[Sync] Error sinkronisasi dari GAS:', err);
+  }
+}
+
+// Panggil sync saat server start
+async function startServer() {
+  // Vite integration
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  // Sinkronisasi data dari GAS sebelum server mulai
+  await syncUsersFromGAS();
+  
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Kawal Madrasah Server] Running on http://localhost:${PORT}`);
+    console.log(`[Kawal Madrasah Server] Total users: ${store.users.length}`);
+  });
+}
 function getDepartmentFromSubCategory(subCategory: string): Department {
   switch (subCategory) {
     case 'Proses Belajar Mengajar':
@@ -881,7 +1033,62 @@ app.post('/api/complaints', async (req, res) => {
 });
 
 // State Machine Actions matching the 7 Flowchart Steps
-
+// Endpoint untuk migrate default users ke Google Sheets
+app.post('/api/admin/migrate-default-users', async (req, res) => {
+  if (!store.gasUrl) {
+    return res.status(400).json({ error: 'Google Apps Script URL belum dikonfigurasi' });
+  }
+  
+  let migratedCount = 0;
+  let skippedCount = 0;
+  
+  for (const defaultUser of defaultUsers) {
+    try {
+      // Cek apakah user sudah ada di spreadsheet
+      const checkResponse = await fetch(store.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'checkEmailExists', 
+          email: defaultUser.email 
+        })
+      });
+      
+      if (checkResponse.ok) {
+        const checkResult = await checkResponse.json();
+        
+        if (checkResult.exists) {
+          skippedCount++;
+          console.log(`[Migrate] Skip (sudah ada): ${defaultUser.email}`);
+        } else {
+          // Tambah user ke spreadsheet
+          const addResponse = await fetch(store.gasUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              action: 'addUser', 
+              data: defaultUser 
+            })
+          });
+          
+          if (addResponse.ok) {
+            migratedCount++;
+            console.log(`[Migrate] Berhasil: ${defaultUser.email}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[Migrate] Error untuk ${defaultUser.email}:`, err);
+    }
+  }
+  
+  res.json({
+    success: true,
+    message: `Migrasi selesai. ${migratedCount} user ditambahkan, ${skippedCount} user sudah ada.`,
+    migrated: migratedCount,
+    skipped: skippedCount
+  });
+});
 app.post('/api/complaints/:id/action', async (req, res) => {
   const complaintId = req.params.id;
   const { action, actorName, actorRole, notes, directInfoAnswer, assignedDepartment, departmentResponse, finalAnswer } = req.body;
@@ -1044,26 +1251,5 @@ app.post('/api/complaints/:id/action', async (req, res) => {
   res.json({ success: true, complaint });
 });
 
-// Full-Stack Server Start & Dev Routing Setup
-async function startServer() {
-  // Vite integration
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Kawal Madrasah Server] Running on http://localhost:${PORT}`);
-  });
-}
 
 startServer();

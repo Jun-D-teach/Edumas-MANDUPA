@@ -362,7 +362,23 @@ export const AdminView: React.FC<AdminViewProps> = ({
       return true;
     });
   };
-
+const handleDeleteUser = async (userId: string) => {
+  try {
+    const response = await fetch(`/api/admin/delete-user/${userId}`, {
+      method: 'DELETE'
+    });
+    const data = await response.json();
+    
+    if (response.ok) {
+      setUsersMessage({ text: data.message, type: 'success' });
+      await fetchUsers(); // Refresh daftar user
+    } else {
+      throw new Error(data.error || 'Gagal menghapus user.');
+    }
+  } catch (err: any) {
+    setUsersMessage({ text: err.message, type: 'error' });
+  }
+};
   // Sort complaints newest first
   const sortedComplaints = [...complaints].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -1464,6 +1480,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                   >
                     Batal
                   </button>
+                 
                 </div>
               </div>
             </div>
@@ -1529,6 +1546,19 @@ export const AdminView: React.FC<AdminViewProps> = ({
                             <code className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 animate-pulse">
                               {item.password || 'man2plg123'}
                             </code>
+                             <button
+      onClick={() => {
+        if (window.confirm(`Yakin ingin menghapus akun ${item.name}? Tindakan ini tidak dapat dibatalkan.`)) {
+          handleDeleteUser(item.id);
+        }
+      }}
+      disabled={item.id === user.id} // Jangan izinkan hapus akun sendiri
+      className="px-2.5 py-1 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 rounded-lg text-xs font-extrabold transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+      title={item.id === user.id ? "Tidak dapat menghapus akun sendiri" : "Hapus akun"}
+    >
+      <Trash2 className="w-3.5 h-3.5" />
+      Hapus
+    </button>
                           </div>
                         </td>
                         <td className="p-3 text-center">
@@ -1545,6 +1575,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
                             <Edit3 className="w-3.5 h-3.5 text-indigo-500" />
                             Ubah Detail & Sandi
                           </button>
+                          
                         </td>
                       </tr>
                     ))
