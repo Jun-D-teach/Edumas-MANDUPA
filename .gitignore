@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+1_server.ts
+data-store.json

@@ -11,7 +11,7 @@ import { createServer as createViteServer } from 'vite';
 import { User, Complaint, ActivityLog, UserRole, Department, ComplaintStatus, KMNotification } from './src/types.js';
 
 const app = express();
-const PORT = 3000;
+const PORT = 3001;
 const DATA_FILE = path.join(process.cwd(), 'data-store.json');
 
 app.use(express.json({ limit: '50mb' }));
@@ -225,44 +225,70 @@ const defaultLogs: ActivityLog[] = [
   }
 ];
 
-function initDataStore(): DataStore {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const p = fs.readFileSync(DATA_FILE, 'utf-8');
-      const loaded = JSON.parse(p) as DataStore;
-      // Merge elements if keys are missing
-      if (!loaded.users) {
-        loaded.users = defaultUsers;
-      } else {
-        // Ensure all default waka / ketua/ admin are present even in old saves
-        defaultUsers.forEach(du => {
-          if (!loaded.users.some(u => u.email.toLowerCase() === du.email.toLowerCase())) {
-            loaded.users.push(du);
-          }
-        });
-      }
-      if (!loaded.complaints) loaded.complaints = defaultComplaints;
-      if (!loaded.logs) loaded.logs = defaultLogs;
-      if (!loaded.notifications) loaded.notifications = [];
-      if (loaded.gasUrl === undefined) loaded.gasUrl = process.env.GOOGLE_SCRIPT_URL || '';
-      return loaded;
-    }
-  } catch (error) {
-    console.error('Error reading JSON store, resetting to default', error);
-  }
-
-  const initialStore: DataStore = {
-    users: defaultUsers,
-    complaints: defaultComplaints,
-    logs: defaultLogs,
+// Fungsi inisialisasi data yang sekarang ASYNC untuk mengambil dari GAS terlebih dahulu
+// Fungsi inisialisasi data yang sekarang ASYNC untuk mengambil dari GAS terlebih dahulu
+async function initDataStore(): Promise<DataStore> {
+  let storeData: DataStore = {
+    users: [...defaultUsers], // Mulai dengan default
+    complaints: [...defaultComplaints],
+    logs: [...defaultLogs],
     notifications: [],
     gasUrl: process.env.GOOGLE_SCRIPT_URL || ''
   };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(initialStore, null, 2), 'utf-8');
-  return initialStore;
+
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const p = fs.readFileSync(DATA_FILE, 'utf-8');
+      if (p.trim()) { // Cek agar tidak error jika file kosong
+        const loaded = JSON.parse(p) as DataStore;
+        if (loaded.complaints) storeData.complaints = loaded.complaints;
+        if (loaded.logs) storeData.logs = loaded.logs;
+        if (loaded.notifications) storeData.notifications = loaded.notifications;
+        if (loaded.gasUrl !== undefined) storeData.gasUrl = loaded.gasUrl;
+      }
+    }
+  } catch (error) {
+    console.error('Error reading JSON store, akan menggunakan data kosong', error);
+  }
+
+  // PRIORITAS UTAMA: Ambil user dari Google Sheets jika GAS URL tersedia
+  if (storeData.gasUrl) {
+    try {
+      console.log('[Init] 🔄 Mengambil data user dari Google Sheets (Sumber Utama)...');
+      const response = await fetch(storeData.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getUsers' })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.users && result.users.length > 0) {
+          console.log(`[Init] ✅ Berhasil mengambil ${result.users.length} user dari Spreadsheet.`);
+          storeData.users = result.users; // Timpa data lokal dengan data dari GAS
+        }
+      } else {
+        console.warn('[Init] ⚠️ Gagal mengambil dari GAS, menggunakan data lokal');
+      }
+    } catch (err) {
+      console.error('[Init] ❌ Error mengambil dari GAS:', err);
+    }
+  } else {
+    console.log('[Init] ⚠️ GOOGLE_SCRIPT_URL belum dikonfigurasi. Menggunakan default users.');
+  }
+
+  // Simpan state terbaru ke file JSON sebagai cache (Hanya sekali saat startup)
+  fs.writeFileSync(DATA_FILE, JSON.stringify(storeData, null, 2), 'utf-8');
+  return storeData;
 }
 
-let store = initDataStore();
+// Deklarasi variabel store
+
+
+// ✅ 1. Deklarasi variabel store DI SINI (sebelum startServer)
+let store: DataStore;
+
+
 
 function saveStore() {
   try {
@@ -694,14 +720,14 @@ app.post('/api/auth/forgot-password-reset', (req, res) => {
 // Admin Account Monitoring and Management
 // Endpoint untuk ambil semua user
 // Admin Account Monitoring and Management
+// Endpoint untuk ambil semua user - Refresh dari GAS TANPA menyimpan ke JSON (Mencegah Vite Reload)
 app.get('/api/admin/users', async (req, res) => {
-  // SELALU gunakan data dari local store (yang sudah include default users)
-  let users = [...store.users];
+  let users = [...store.users]; // Fallback ke local store
 
-  // Jika GAS configured, MERGE data dari spreadsheet (jangan replace!)
+  // Jika GAS configured, ambil dari spreadsheet
   if (store.gasUrl) {
     try {
-      console.log('[Users] Mengambil data user dari Google Sheets untuk merge...');
+      console.log('[Users] 🔄 Refresh data user dari Google Sheets...');
       const response = await fetch(store.gasUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -711,43 +737,27 @@ app.get('/api/admin/users', async (req, res) => {
       if (response.ok) {
         const result = await response.json();
         console.log('[Users] Response GAS:', result);
-
-        if (result.success && result.users && Array.isArray(result.users)) {
-          // MERGE: gabungkan user dari GAS yang belum ada di local
-          const gasUsers = result.users;
-          let addedCount = 0;
-
-          gasUsers.forEach(gasUser => {
-            const exists = users.find(u => 
-              u.id === gasUser.id || 
-              u.email.toLowerCase() === gasUser.email.toLowerCase()
-            );
-            if (!exists) {
-              users.push(gasUser);
-              addedCount++;
-              console.log(`[Users] Merge user baru dari GAS: ${gasUser.email}`);
-            }
-          });
-
-          if (addedCount > 0) {
-            console.log(`[Users] ${addedCount} user baru ditambahkan dari GAS`);
-            store.users = users;
-            saveStore();
-          } else {
-            console.log('[Users] Tidak ada user baru dari GAS');
-          }
+        
+        if (result.success && result.users) {
+          console.log(`[Users] ✅ Ditemukan ${result.users.length} user di spreadsheet`);
+          
+          // UPDATE MEMORI SAJA. JANGAN panggil saveStore() di sini!
+          // Memanggil saveStore() di GET request akan memicu Vite HMR page reload.
+          store.users = result.users;
+          users = result.users;
         }
       }
     } catch (err) {
-      console.error('[Users] Error mengambil dari GAS (gunakan data lokal):', err);
+      console.error('[Users] Error mengambil dari GAS:', err);
+      console.log('[Users] Menggunakan data dari local JSON');
     }
   }
 
-  // Filter hanya admin, bidang, dan ketuatim untuk tampilan manajemen
+  // Filter hanya admin, bidang, dan ketuatim
   const filteredUsers = users.filter(u =>
     u.role === 'admin' || u.role === 'bidang' || u.role === 'ketuatim'
   );
-
+  
   console.log(`[Users] Returning ${filteredUsers.length} petugas (total users: ${users.length})`);
   res.json(filteredUsers);
 });
@@ -851,82 +861,9 @@ app.get('/api/logs', (req, res) => {
 });
 // Fungsi untuk sync data dari GAS ke local store
 // Fungsi untuk sync data dari GAS ke local store (saat startup)
-async function syncUsersFromGAS() {
-  if (!store.gasUrl) {
-    console.log('[Sync] GAS URL tidak dikonfigurasi, menggunakan data lokal');
-    return;
-  }
-
-  try {
-    console.log('[Sync] Mengsinkronisasi data user dari Google Sheets...');
-    const response = await fetch(store.gasUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getUsers' })
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      
-      if (result.success && result.users && Array.isArray(result.users) && result.users.length > 0) {
-        console.log(`[Sync] Ditemukan ${result.users.length} user di spreadsheet`);
-        
-        const gasUsers = result.users;
-        let addedCount = 0;
-
-        // MERGE: tambahkan user dari GAS yang belum ada di local
-        gasUsers.forEach(gasUser => {
-          const exists = store.users.find(u => 
-            u.id === gasUser.id || 
-            u.email.toLowerCase() === gasUser.email.toLowerCase()
-          );
-          if (!exists) {
-            store.users.push(gasUser);
-            addedCount++;
-            console.log(`[Sync] Menambahkan user dari GAS: ${gasUser.email} (${gasUser.role})`);
-          }
-        });
-
-        if (addedCount > 0) {
-          saveStore();
-          console.log(`[Sync] Sinkronisasi selesai. ${addedCount} user baru ditambahkan.`);
-        } else {
-          console.log('[Sync] Semua user dari GAS sudah ada di local.');
-        }
-      } else {
-        console.log('[Sync] Spreadsheet kosong atau tidak ada user.');
-      }
-    }
-  } catch (err) {
-    console.error('[Sync] Error sinkronisasi dari GAS:', err);
-  }
-}
 
 // Panggil sync saat server start
-async function startServer() {
-  // Vite integration
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
 
-  // Sinkronisasi data dari GAS sebelum server mulai
-  await syncUsersFromGAS();
-  
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Kawal Madrasah Server] Running on http://localhost:${PORT}`);
-    console.log(`[Kawal Madrasah Server] Total users: ${store.users.length}`);
-  });
-}
 function getDepartmentFromSubCategory(subCategory: string): Department {
   switch (subCategory) {
     case 'Proses Belajar Mengajar':
@@ -1032,7 +969,6 @@ app.post('/api/complaints', async (req, res) => {
   res.json({ success: true, complaint: newComplaint });
 });
 
-// State Machine Actions matching the 7 Flowchart Steps
 // Endpoint untuk migrate default users ke Google Sheets
 app.post('/api/admin/migrate-default-users', async (req, res) => {
   if (!store.gasUrl) {
@@ -1251,5 +1187,32 @@ app.post('/api/complaints/:id/action', async (req, res) => {
   res.json({ success: true, complaint });
 });
 
+
+
+async function startServer() {
+  // 2. Inisialisasi data (async - mengambil dari GAS dulu)
+  store = await initDataStore();
+  
+  // 3. Vite integration
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+  
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Kawal Madrasah Server] Running on http://localhost:${PORT}`);
+    console.log(`[Kawal Madrasah Server] Total users: ${store.users.length}`);
+    console.log(`[Kawal Madrasah Server] GAS URL: ${store.gasUrl ? 'Configured' : 'Not configured'}`);
+  });
+}
 
 startServer();
