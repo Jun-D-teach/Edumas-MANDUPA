@@ -712,6 +712,11 @@ export default function App() {
                   </form>
                 ) : authMode === 'register' ? (
                   <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
+                    {authError && (
+  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center mb-4 font-medium">
+    ⚠️ {authError}
+  </div>
+)}
                     <div>
                       <label className="block text-slate-500 font-bold mb-1.5">Nama Lengkap Anda</label>
                       <input
