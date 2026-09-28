@@ -26,6 +26,77 @@ interface DataStore {
   gasUrl: string;
 }
 
+const handleComplaintSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // Validasi: Pengaduan Pelanggaran hanya untuk user yang sudah login
+  if (category === 'Pengaduan Pelanggaran' && (!user || !user.isVerified)) {
+    setComplaintError('Anda harus login terlebih dahulu untuk mengirim pengaduan pelanggaran.');
+    setShowAuthCard(true);
+    return;
+  }
+  
+  if (!title.trim() || !description.trim()) {
+    setComplaintError('Judul dan keterangan pengaduan wajib diisi.');
+    return;
+  }
+
+  setSubmitting(true);
+  setComplaintError('');
+
+  try {
+    const payload: any = {
+      pelaporName: anonymous && user ? user.name : pelaporName,
+      pelaporEmail: anonymous && user ? user.email : pelaporEmail,
+      category,
+      subCategory,
+      title,
+      description,
+      anonymous,
+    };
+
+    // Handle file upload jika ada
+    if (supportingEvidence && supportingEvidenceName) {
+      payload.supportingEvidence = supportingEvidence;
+      payload.supportingEvidenceName = supportingEvidenceName;
+    }
+
+    const response = await fetch('/api/complaints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || 'Gagal mengirim pengaduan.');
+    }
+
+    // Reset form
+    setPelaporName('');
+    setPelaporEmail('');
+    setCategory('Hanya Informasi / Aspirasi');
+    setSubCategory('');
+    setTitle('');
+    setDescription('');
+    setAnonymous(false);
+    setSupportingEvidence(null);
+    setSupportingEvidenceName('');
+    
+    // Refresh complaints
+    await onRefreshComplaints();
+    
+    // Show success message
+    setComplaintSuccess('Pengaduan berhasil dikirim! Nomor Tiket: ' + result.complaint.ticketNumber);
+    setTimeout(() => setComplaintSuccess(''), 5000);
+    
+  } catch (err: any) {
+    setComplaintError(err.message || 'Terjadi kesalahan saat mengirim pengaduan.');
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 const defaultUsers: User[] = [
   {
     id: 'u-1',
@@ -587,7 +658,7 @@ app.post('/api/auth/register', async (req, res) => {
   });
 });
 
-app.post('/api/auth/verify', (req, res) => {
+app.post('/api/auth/verify', async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code) {
     return res.status(400).json({ error: 'Email dan Kode Verifikasi wajib diisi' });
@@ -604,8 +675,15 @@ app.post('/api/auth/verify', (req, res) => {
     delete user.verificationCode;
     saveStore();
 
-    // Sync to GAS users sheet
-    syncToGAS('addUser', user);
+    // Update status di Google Sheets
+    if (store.gasUrl) {
+      try {
+        await syncToGAS('updateUserVerificationStatus', { email: user.email });
+        console.log(`[Verify] ✅ Status user ${user.email} diupdate di spreadsheet`);
+      } catch (err) {
+        console.error('[Verify] ❌ Error update status di GAS:', err);
+      }
+    }
 
     return res.json({ success: true, user });
   } else {

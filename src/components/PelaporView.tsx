@@ -257,18 +257,42 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                    Kategori Layanan
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e: any) => setCategory(e.target.value)}
-                    className="w-full text-xs font-medium border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  >
-                    <option value="Pengaduan Pelanggaran">Pengaduan Pelanggaran</option>
-                    <option value="Informasi">Hanya Informasi / Aspirasi</option>
-                  </select>
-                </div>
+  <label className="block text-slate-500 font-bold mb-1.5">
+    KATEGORI LAYANAN
+  </label>
+  <select
+    value={category}
+    onChange={(e) => setCategory(e.target.value)}
+    className="w-full border border-slate-200 bg-white p-2.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    required
+  >
+    {/* Selalu tampilkan Informasi/Aspirasi untuk semua user */}
+    <option value="Hanya Informasi / Aspirasi">
+      Hanya Informasi / Aspirasi
+    </option>
+    
+    {/* Tampilkan Pengaduan Pelanggaran HANYA jika user sudah login */}
+    {user && user.isVerified && (
+      <option value="Pengaduan Pelanggaran">
+        Pengaduan Pelanggaran
+      </option>
+    )}
+  </select>
+  
+  {/* Tampilkan pesan jika user tamu mencoba akses pengaduan */}
+  {!user && category === 'Pengaduan Pelanggaran' && (
+    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+      <p className="font-bold mb-1">⚠️ Perlu Login</p>
+      <p>Untuk mengirim pengaduan pelanggaran, silakan <button onClick={() => setShowAuthCard(true)} className="underline font-bold text-emerald-700">login</button> atau <button onClick={() => {setAuthMode('register'); setShowAuthCard(true);}} className="underline font-bold text-emerald-700">daftar akun</button> terlebih dahulu.</p>
+    </div>
+  )}
+  
+  <p className="text-[10px] text-slate-400 mt-1">
+    Contoh: Lampu toilet kelas VII bocor / Pertanyaan jadwal ujian
+  </p>
+</div>
+
+
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">

@@ -1,87 +1,6 @@
 {
   "users": [
     {
-      "id": "u-1",
-      "email": "admin@madrasah.sch.id",
-      "name": "Ustadz Ahmad Fauzi (Admin)",
-      "role": "admin",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.745Z"
-    },
-    {
-      "id": "u-2",
-      "email": "ketua@madrasah.sch.id",
-      "name": "H. Syarifuddin, M.Pd (Ketua Tim)",
-      "role": "ketuatim",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
-      "id": "u-3",
-      "email": "kesiswaan@madrasah.sch.id",
-      "name": "Ustadzah Halimah (Waka Kesiswaan)",
-      "role": "bidang",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
-      "id": "u-3b",
-      "email": "kurikulum@madrasah.sch.id",
-      "name": "Ustadz Mansur (Waka Kurikulum)",
-      "role": "bidang",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
-      "id": "u-3c",
-      "email": "sarpras@madrasah.sch.id",
-      "name": "H. Sobirin, M.Si (Waka Sarana Prasarana)",
-      "role": "bidang",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
-      "id": "u-3d",
-      "email": "humas@madrasah.sch.id",
-      "name": "Dra. Hj. Nurjanah (Waka Humas)",
-      "role": "bidang",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
-      "id": "u-3e",
-      "email": "keamanan@madrasah.sch.id",
-      "name": "Pak Satrio (Waka Keamanan)",
-      "role": "bidang",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
-      "id": "u-3f",
-      "email": "tu@madrasah.sch.id",
-      "name": "Hj. Aminah, S.Sos (Kaur TU)",
-      "role": "bidang",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
-      "id": "u-4",
-      "email": "budi@siswa.sch.id",
-      "name": "Budi Santoso (Siswa VII-A)",
-      "role": "pelapor",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-18T22:51:04.746Z"
-    },
-    {
       "id": "u-pvg7ye7ov",
       "email": "firdaushadi444@gmail.com",
       "name": "Firdaus Hamto Diningso",
@@ -89,16 +8,6 @@
       "isVerified": true,
       "password": "man2plg123",
       "createdAt": "2026-09-14T07:08:41.802Z",
-      "whatsappNumber": ""
-    },
-    {
-      "id": "u-92rnjodtx",
-      "email": "dataumumjun@gmail.com",
-      "name": "Junaidi",
-      "role": "bidang",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-15T12:57:08.710Z",
       "whatsappNumber": ""
     },
     {
@@ -129,6 +38,96 @@
       "isVerified": false,
       "password": 123456,
       "createdAt": "2026-09-17T04:30:10.326Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-1",
+      "email": "admin@madrasah.sch.id",
+      "name": "Firdaus Hamto Diningso",
+      "role": "admin",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-2",
+      "email": "ketua@madrasah.sch.id",
+      "name": "Yusri Erlini, M.Pd",
+      "role": "ketuatim",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-3",
+      "email": "kesiswaan@madrasah.sch.id",
+      "name": "Sururi Handiyanti, S.Pd., M.Si",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "sururi73",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-3b",
+      "email": "kurikulum@madrasah.sch.id",
+      "name": "Bunyamin, M.Pd",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-3c",
+      "email": "sarpras@madrasah.sch.id",
+      "name": "H. Sobirin, M.Si (Waka Sarana Prasarana)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-3d",
+      "email": "humas@madrasah.sch.id",
+      "name": "Dra. Hj. Nurjanah (Waka Humas)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-3f",
+      "email": "tu@madrasah.sch.id",
+      "name": "Hj. Aminah, S.Sos (Kaur TU)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-4",
+      "email": "budi@siswa.sch.id",
+      "name": "Budi Santoso (Siswa VII-A)",
+      "role": "pelapor",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-25T08:39:00.942Z",
+      "whatsappNumber": ""
+    },
+    {
+      "id": "u-1bynnz349",
+      "email": "dataumumjun@gmail.com",
+      "name": "junaidi",
+      "role": "pelapor",
+      "isVerified": false,
+      "password": "man2plg",
+      "createdAt": "2026-09-28T06:34:15.194Z",
       "whatsappNumber": ""
     }
   ],
