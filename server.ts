@@ -752,22 +752,43 @@ app.post('/api/auth/forgot-password-request', async (req, res) => {
   user.resetCode = resetCode;
   saveStore();
 
-  // Send email if configured, or fallback
-  const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; color: #1e293b;">
-      <h2 style="color: #047857; margin-top: 0; font-weight: 800;">Pemulihan Kata Sandi Akun - EDUMAS MAN 2</h2>
-      <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: bold; margin-bottom: 12px;">Dinas Layanan Pengaduan Madrasah Unggulan</p>
-      <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
-      <p style="font-size: 14px; color: #475569;">Yth. Bapak/Ibu/Sdr/i <b>${user.name}</b>,</p>
-      <p style="font-size: 14px; color: #475569;">Kami menerima permintaan pengaturan ulang kata sandi. Silakan gunakan Kode OTP pemulihan di bawah ini untuk mengisi formulir reset sandi Anda:</p>
-      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; text-align: center; padding: 18px; border-radius: 8px; margin: 20px 0;">
-        <span style="font-size: 32px; font-weight: 900; letter-spacing: 0.3em; color: #166534; font-family: monospace;">${resetCode}</span>
-      </div>
-      <p style="font-size: 12px; color: #ef4444; font-weight: bold; margin-bottom: 4px;">Penting:</p>
-      <p style="font-size: 12px; color: #64748b; margin-top: 0; line-height: 1.5;">Jangan bagikan kode OTP ini ke siapapun termasuk staf EDUMAS. Kode Anda berlaku selama 30 menit. Jika ini bukan tindakan Anda, silakan ubah kata sandi lama atau abaikan pesan ini.</p>
+  const htmlContent = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; color: #1e293b;">
+    <h2 style="color: #047857; margin-top: 0; font-weight: 800;">Pemulihan Kata Sandi Akun - EDUMAS MAN 2</h2>
+    <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; font-weight: bold; margin-bottom: 12px;">Dinas Layanan Pengaduan Madrasah Unggulan</p>
+    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
+    <p style="font-size: 14px; color: #475569;">Yth. Bapak/Ibu/Sdr/i <b>${user.name}</b>,</p>
+    <p style="font-size: 14px; color: #475569;">Kami menerima permintaan pengaturan ulang kata sandi. Silakan gunakan Kode OTP pemulihan di bawah ini untuk mengisi formulir reset sandi Anda:</p>
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; text-align: center; padding: 18px; border-radius: 8px; margin: 20px 0;">
+      <span style="font-size: 32px; font-weight: 900; letter-spacing: 0.3em; color: #166534; font-family: monospace;">${resetCode}</span>
     </div>
-  `;
-  await sendNotificationEmail(user.email, '[EDUMAS MAN 2] Atur Ulang Kata Sandi Akun', htmlContent);
+    <p style="font-size: 12px; color: #ef4444; font-weight: bold; margin-bottom: 4px;">Penting:</p>
+    <p style="font-size: 12px; color: #64748b; margin-top: 0; line-height: 1.5;">Jangan bagikan kode OTP ini ke siapapun termasuk staf EDUMAS. Kode Anda berlaku selama 30 menit. Jika ini bukan tindakan Anda, silakan ubah kata sandi lama atau abaikan pesan ini.</p>
+  </div>`;
+
+  // Coba kirim via GAS dulu
+  let emailSent = false;
+  if (store.gasUrl) {
+    try {
+      console.log('[Forgot] Mengirim via GAS...');
+      const gasResponse = await syncToGAS('sendVerification', {
+        email: user.email,
+        name: user.name,
+        code: resetCode
+      });
+      if (gasResponse && gasResponse.success) {
+        emailSent = true;
+        console.log('[Forgot] ✅ Email terkirim via GAS');
+      }
+    } catch (err) {
+      console.error('[Forgot] ❌ Error GAS:', err);
+    }
+  }
+
+  // Fallback ke SMTP jika GAS gagal
+  if (!emailSent) {
+    console.log('[Forgot] Mencoba kirim via SMTP...');
+    await sendNotificationEmail(user.email, '[EDUMAS MAN 2] Atur Ulang Kata Sandi Akun', htmlContent);
+  }
 
   return res.json({
     success: true,

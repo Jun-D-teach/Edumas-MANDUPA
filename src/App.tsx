@@ -233,29 +233,41 @@ export default function App() {
     clearAuthForms();
   };
 
-  const handleForgotRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
-    try {
-      const response = await fetch('/api/auth/forgot-password-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setForgotStep(2);
-        if (data.sandboxOTP) {
-          setSandboxOTP(data.sandboxOTP);
-        }
-        setForgotSuccessMessage('Kode OTP pemulihan kata sandi Anda berhasil disalurkan ke kotak masuk email Anda!');
-      } else {
-        setAuthError(data.error || 'Email tidak terdaftar atau gagal mengirim OTP.');
+const handleForgotRequest = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setAuthError('');
+  
+  console.log('[Forgot] Memulai request untuk email:', forgotEmail);
+  
+  if (!forgotEmail.trim()) {
+    setAuthError('Email wajib diisi.');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/auth/forgot-password-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: forgotEmail })
+    });
+    
+    const data = await response.json();
+    console.log('[Forgot] Response:', data);
+    
+    if (response.ok) {
+      setForgotStep(2);
+      if (data.sandboxOTP) {
+        setSandboxOTP(data.sandboxOTP);
       }
-    } catch (err) {
-      setAuthError('Gagal terkoneksi ke server.');
+      setForgotSuccessMessage('Kode OTP pemulihan kata sandi Anda berhasil disalurkan ke kotak masuk email Anda!');
+    } else {
+      setAuthError(data.error || 'Email tidak terdaftar atau gagal mengirim OTP.');
     }
-  };
+  } catch (err: any) {
+    console.error('[Forgot] Error:', err);
+    setAuthError('Gagal terkoneksi ke server: ' + err.message);
+  }
+};
 
   const handleForgotResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -790,54 +802,62 @@ export default function App() {
                   </form>
                 ) : (
                   forgotStep === 1 ? (
-                    <form onSubmit={handleForgotRequest} className="space-y-4 text-xs font-semibold">
-                      <p className="text-slate-500 mb-2 leading-relaxed">
-                        Masukkan email Anda. Kami akan mendistribusikan kode 6 digit OTP pemulihan sandi secara otomatis.
-                      </p>
-                      <div>
-                        <label className="block text-slate-500 font-bold mb-1.5">Email Terdaftar</label>
-                        <input
-                          type="email"
-                          placeholder="contoh: budi@siswa.sch.id / warga@gmail.com"
-                          value={forgotEmail}
-                          onChange={(e) => setForgotEmail(e.target.value)}
-                          className="w-full border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                          required
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
-                      >
-                        Kirim Kode Pemulihan
-                      </button>
+  <form onSubmit={handleForgotRequest} className="space-y-4 text-xs font-semibold">
+    <p className="text-slate-500 mb-2 leading-relaxed">
+      Masukkan email Anda. Kami akan mendistribusikan kode 6 digit OTP pemulihan sandi secara otomatis.
+    </p>
+    
+    {/* TAMBAHKAN INI - Tampilkan error jika ada */}
+    {authError && (
+      <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
+        ⚠️ {authError}
+      </div>
+    )}
+    
+    <div>
+      <label className="block text-slate-500 font-bold mb-1.5">Email Terdaftar</label>
+      <input
+        type="email"
+        placeholder="contoh: budi@siswa.sch.id / warga@gmail.com"
+        value={forgotEmail}
+        onChange={(e) => setForgotEmail(e.target.value)}
+        className="w-full border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+        required
+      />
+    </div>
+    <button
+      type="submit"
+      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
+    >
+      Kirim Kode Pemulihan
+    </button>
 
-                      <div className="text-center pt-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAuthMode('login');
-                            setAuthError('');
-                            setForgotSuccessMessage('');
-                          }}
-                          className="text-emerald-750 hover:text-emerald-950 font-bold hover:underline cursor-pointer"
-                        >
-                          Kembali Ke Halaman Login
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
+    <div className="text-center pt-2">
+      <button
+        type="button"
+        onClick={() => {
+          setAuthMode('login');
+          setAuthError('');
+          setForgotSuccessMessage('');
+        }}
+        className="text-emerald-750 hover:text-emerald-950 font-bold hover:underline cursor-pointer"
+      >
+        Kembali Ke Halaman Login
+      </button>
+    </div>
+  </form>
+) : (
                     <form onSubmit={handleForgotResetSubmit} className="space-y-4 text-xs font-semibold">
                       <p className="text-slate-500 mb-2 leading-relaxed font-medium">
                         Masukkan kode OTP pelindung beserta Kata Sandi Baru Anda di bawah ini:
                       </p>
-                      {sandboxOTP && (
-                        <div className="p-3.5 bg-amber-50 border border-amber-250 rounded-2xl text-amber-800 text-xs text-left shadow-xs">
-                          <p className="font-bold flex items-center gap-1 text-[11px] text-amber-900">⚡ Kode OTP Pemulihan (Sandbox):</p>
-                          <p className="font-mono text-center text-lg font-black tracking-widest text-amber-950 my-1 select-all">{sandboxOTP}</p>
-                          <p className="text-[10px] text-amber-600">Gunakan kode ini jika SMTP / Apps Script tidak diaktifkan.</p>
-                        </div>
-                      )}
+                     {(typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) && sandboxOTP && (
+  <div className="p-3.5 bg-amber-50 border border-amber-250 rounded-2xl text-amber-800 text-xs text-left shadow-xs">
+    <p className="font-bold flex items-center gap-1 text-[11px] text-amber-900">⚡ Kode OTP Pemulihan (Sandbox - Mode Development):</p>
+    <p className="font-mono text-center text-lg font-black tracking-widest text-amber-950 my-1 select-all">{sandboxOTP}</p>
+    <p className="text-[10px] text-amber-600">Gunakan kode ini jika SMTP / Apps Script tidak diaktifkan.</p>
+  </div>
+)}
                       <div>
                         <label className="block text-slate-500 font-bold mb-1.5 font-mono text-[10px]">6 DIGIT OTP VERIFIKASI PEMULIHAN</label>
                         <input
