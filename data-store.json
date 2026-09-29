@@ -1,84 +1,40 @@
 {
   "users": [
     {
-      "id": "u-pvg7ye7ov",
-      "email": "firdaushadi444@gmail.com",
-      "name": "Firdaus Hamto Diningso",
-      "role": "pelapor",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-14T07:08:41.802Z",
-      "whatsappNumber": ""
-    },
-    {
-      "id": "u-k3g5j3gjh",
-      "email": "tamuptsp@gmail.com",
-      "name": "jook",
-      "role": "pelapor",
-      "isVerified": true,
-      "password": "man2plg123",
-      "createdAt": "2026-09-17T03:51:38.145Z",
-      "whatsappNumber": ""
-    },
-    {
-      "id": "u-4ix5q8k3r",
-      "email": "pusdigman2plg@gmail.com",
-      "name": "joko",
-      "role": "pelapor",
-      "isVerified": false,
-      "password": 123456,
-      "createdAt": "2026-09-17T04:24:22.667Z",
-      "whatsappNumber": ""
-    },
-    {
-      "id": "u-720d6917e",
-      "email": "achmadfadil2@madrasah.kemenag.go.id",
-      "name": "jaki",
-      "role": "pelapor",
-      "isVerified": false,
-      "password": 123456,
-      "createdAt": "2026-09-17T04:30:10.326Z",
-      "whatsappNumber": ""
-    },
-    {
       "id": "u-1",
       "email": "admin@madrasah.sch.id",
-      "name": "Firdaus Hamto Diningso",
+      "name": "Ustadz Ahmad Fauzi (Admin)",
       "role": "admin",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
+      "createdAt": "2026-09-29T05:01:18.781Z"
     },
     {
       "id": "u-2",
       "email": "ketua@madrasah.sch.id",
-      "name": "Yusri Erlini, M.Pd",
+      "name": "H. Syarifuddin, M.Pd (Ketua Tim)",
       "role": "ketuatim",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
+      "createdAt": "2026-09-29T05:01:18.781Z"
     },
     {
       "id": "u-3",
       "email": "kesiswaan@madrasah.sch.id",
-      "name": "Sururi Handiyanti, S.Pd., M.Si",
+      "name": "Ustadzah Halimah (Waka Kesiswaan)",
       "role": "bidang",
       "isVerified": true,
-      "password": "sururi73",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
+      "password": "man2plg123",
+      "createdAt": "2026-09-29T05:01:18.781Z"
     },
     {
       "id": "u-3b",
       "email": "kurikulum@madrasah.sch.id",
-      "name": "Bunyamin, M.Pd",
+      "name": "Ustadz Mansur (Waka Kurikulum)",
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
+      "createdAt": "2026-09-29T05:01:18.781Z"
     },
     {
       "id": "u-3c",
@@ -87,8 +43,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
+      "createdAt": "2026-09-29T05:01:18.781Z"
     },
     {
       "id": "u-3d",
@@ -97,8 +52,16 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
+      "createdAt": "2026-09-29T05:01:18.781Z"
+    },
+    {
+      "id": "u-3e",
+      "email": "keamanan@madrasah.sch.id",
+      "name": "Pak Satrio (Waka Keamanan)",
+      "role": "bidang",
+      "isVerified": true,
+      "password": "man2plg123",
+      "createdAt": "2026-09-29T05:01:18.781Z"
     },
     {
       "id": "u-3f",
@@ -107,8 +70,7 @@
       "role": "bidang",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
+      "createdAt": "2026-09-29T05:01:18.781Z"
     },
     {
       "id": "u-4",
@@ -117,18 +79,7 @@
       "role": "pelapor",
       "isVerified": true,
       "password": "man2plg123",
-      "createdAt": "2026-09-25T08:39:00.942Z",
-      "whatsappNumber": ""
-    },
-    {
-      "id": "u-1bynnz349",
-      "email": "dataumumjun@gmail.com",
-      "name": "junaidi",
-      "role": "pelapor",
-      "isVerified": true,
-      "password": "man2plg2",
-      "createdAt": "2026-09-28T06:34:15.194Z",
-      "whatsappNumber": ""
+      "createdAt": "2026-09-29T05:01:18.781Z"
     }
   ],
   "complaints": [

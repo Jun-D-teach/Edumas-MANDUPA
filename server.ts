@@ -933,7 +933,59 @@ app.get('/api/complaints', (req, res) => {
   // Let's retrieve lists
   res.json(store.complaints);
 });
-
+// Endpoint untuk mencari tiket berdasarkan nomor tiket
+app.get('/api/complaints/search/:ticketNumber', async (req, res) => {
+  const { ticketNumber } = req.params;
+  
+  if (!ticketNumber) {
+    return res.status(400).json({ error: 'Nomor tiket wajib diisi.' });
+  }
+  
+  // 1. Cari di local store dulu
+  const localComplaint = store.complaints.find(c => 
+    c.ticketNumber.toLowerCase() === ticketNumber.toLowerCase()
+  );
+  
+  if (localComplaint) {
+    return res.json({ success: true, complaint: localComplaint, source: 'local' });
+  }
+  
+  // 2. Jika tidak ada di lokal, cari di Google Sheets
+  if (store.gasUrl) {
+    try {
+      console.log('[Search] Mencari tiket di Google Sheets:', ticketNumber);
+      const response = await fetch(store.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'findComplaint', 
+          data: { ticketNumber } 
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('[Search] Response GAS:', result);
+        
+        if (result.success && result.complaint) {
+          return res.json({ 
+            success: true, 
+            complaint: result.complaint, 
+            source: 'google_sheets' 
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[Search] Error mencari di GAS:', err);
+    }
+  }
+  
+  // 3. Tidak ditemukan di mana pun
+  return res.status(404).json({ 
+    error: 'Tiket tidak ditemukan atau salah pengetikan.',
+    success: false 
+  });
+});
 app.delete('/api/complaints/:id', (req, res) => {
   const complaintId = req.params.id;
   const complaintIndex = store.complaints.findIndex(c => c.id === complaintId);

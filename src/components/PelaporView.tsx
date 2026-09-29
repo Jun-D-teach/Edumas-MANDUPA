@@ -77,7 +77,9 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
   const [searchQuery, setSearchQuery] = useState('');
   const [searchedComplaint, setSearchedComplaint] = useState<Complaint | null>(null);
   const [searchTried, setSearchTried] = useState(false);
-
+// ✅ TAMBAHKAN STATE INI:
+const [searchLoading, setSearchLoading] = useState(false);
+const [searchError, setSearchError] = useState('');
   // Detail modal
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
@@ -166,14 +168,32 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchTried(true);
-    const found = complaints.find(
-      c => c.ticketNumber.toLowerCase().trim() === searchQuery.toLowerCase().trim()
-    );
-    setSearchedComplaint(found || null);
-  };
+ const handleSearch = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!searchQuery.trim()) {
+    return;
+  }
+  
+  setSearchTried(true);
+  setSearchedComplaint(null);
+  
+  try {
+    // Panggil API endpoint pencarian tiket
+    const response = await fetch(`/api/complaints/search/${encodeURIComponent(searchQuery.trim())}`);
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      setSearchedComplaint(data.complaint);
+    } else {
+      // Tiket tidak ditemukan
+      setSearchedComplaint(null);
+    }
+  } catch (err) {
+    console.error('Error searching ticket:', err);
+    setSearchedComplaint(null);
+  }
+};
 
   const handleSaveTicketInput = (ticketNum: string) => {
     saveTicketToLocal(ticketNum);
@@ -185,12 +205,22 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
   };
 
   // My filtered active submissions: either matches verified email, or stored locally
-  const mySubmissions = complaints.filter(c => {
-    if (user && c.pelaporEmail && c.pelaporEmail.toLowerCase() === user.email.toLowerCase()) {
-      return true;
-    }
-    return savedTicketNumbers.includes(c.ticketNumber);
-  });
+// Filter tiket yang relevan dengan user
+const mySubmissions = complaints.filter(c => {
+  // 1. Jika user login, tampilkan semua tiket dengan email yang cocok
+  if (user && c.pelaporEmail && c.pelaporEmail.toLowerCase() === user.email.toLowerCase()) {
+    return true;
+  }
+  
+  // 2. Jika user TIDAK login, tampilkan tiket yang:
+  //    - Ada di localStorage (savedTicketNumbers)
+  //    - DAN statusnya belum RESOLVED/INFO_ANSWERED (masih aktif)
+  if (!user && savedTicketNumbers.includes(c.ticketNumber)) {
+    return true;
+  }
+  
+  return false;
+});
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto" id="pelapor-view-hub">
@@ -443,67 +473,96 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
         <div className="lg:col-span-5 space-y-6">
           
           {/* Search Ticket */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-              <Search className="w-4.5 h-4.5 text-emerald-600" />
-              Lacak Satus Tiket Pengaduan
-            </h3>
-            
-            <form onSubmit={handleSearch} className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Masukkan Nomor Tiket (KM-...)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 text-xs font-mono border border-slate-200 rounded-lg px-3 py-2 uppercase tracking-wider focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                required
-              />
-              <button
-                type="submit"
-                className="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-              >
-                Cari
-              </button>
-            </form>
-
-            {searchTried && (
-              <div className="animate-fade-in border-t border-slate-100 pt-3">
-                {searchedComplaint ? (
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold font-mono text-slate-500">{searchedComplaint.ticketNumber}</span>
-                      <StatusBadge status={searchedComplaint.status} />
-                    </div>
-                    <h4 className="text-xs font-bold text-slate-700 clamp-1">{searchedComplaint.title}</h4>
-                    <button
-                      onClick={() => setSelectedComplaint(searchedComplaint)}
-                      className="w-full text-center text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-100 py-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
-                    >
-                      Buka Kronologi & Progress Tindakan
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-xs text-rose-600 p-2 text-center bg-rose-50 border border-rose-100 rounded-lg">
-                    ⚠️ Tiket tidak ditemukan atau salah pengetikan.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+<div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+    <Search className="w-4.5 h-4.5 text-emerald-600" />
+    Lacak Status Tiket Pengaduan
+  </h3>
+  
+  <form onSubmit={handleSearch} className="flex gap-2">
+    <input
+      type="text"
+      placeholder="Masukkan Nomor Tiket (KM-...)"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      className="flex-1 text-xs font-mono border border-slate-200 rounded-lg px-3 py-2 uppercase tracking-wider focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+      required
+    />
+    <button
+      type="submit"
+      disabled={searchLoading}
+      className="bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+    >
+      {searchLoading ? (
+        <>
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <span>Mencari...</span>
+        </>
+      ) : (
+        'Cari'
+      )}
+    </button>
+  </form>
+  
+  {/* Tampilkan Error */}
+  {searchError && (
+    <div className="text-xs text-rose-600 p-2 text-center bg-rose-50 border border-rose-100 rounded-lg animate-fade-in">
+      ⚠️ {searchError}
+    </div>
+  )}
+  
+  {/* Tampilkan Hasil */}
+  {searchTried && !searchLoading && searchedComplaint && (
+    <div className="animate-fade-in border-t border-slate-100 pt-3">
+      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="font-semibold font-mono text-slate-500">{searchedComplaint.ticketNumber}</span>
+          <StatusBadge status={searchedComplaint.status} />
+        </div>
+        <h4 className="text-xs font-bold text-slate-700 line-clamp-1">{searchedComplaint.title}</h4>
+        <button
+          onClick={() => setSelectedComplaint(searchedComplaint)}
+          className="w-full text-center text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-100 py-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
+        >
+          Buka Kronologi & Progress Tindakan
+        </button>
+      </div>
+    </div>
+  )}
+</div>
 
           {/* Buku Tiket Saya (LocalStorage list of tickets) */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-              <ListTodo className="w-4.5 h-4.5 text-emerald-600" />
-              Buku Tiket & Laporan Saya {user && `(${user.name})`}
-            </h3>
-
-            {mySubmissions.length === 0 ? (
-              <div className="text-xs text-slate-400 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                <Info className="w-5 h-5 mx-auto mb-2 text-slate-300" />
-                Belum ada tiket terdaftar di perangkat ini.
-              </div>
-            ) : (
+  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+    <ListTodo className="w-4.5 h-4.5 text-emerald-600" />
+    Buku Tiket & Laporan Saya {user && `(${user.name})`}
+  </h3>
+  
+  {/* Pesan Edukatif untuk User Tamu */}
+  {!user && (
+    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+      <p className="font-bold mb-1">💡 Tips:</p>
+      <p>Tiket yang Anda simpan hanya ada di perangkat ini. 
+         <button 
+           onClick={() => setShowAuthCard(true)} 
+           className="underline font-bold text-emerald-700 hover:text-emerald-900"
+         >
+           Login atau Daftar Akun
+         </button> 
+         agar tiket tersimpan permanen dan bisa diakses dari perangkat manapun.
+      </p>
+    </div>
+  )}
+  
+  {mySubmissions.length === 0 ? (
+    <div className="text-xs text-slate-400 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+      <Info className="w-5 h-5 mx-auto mb-2 text-slate-300" />
+      {user 
+        ? 'Anda belum memiliki laporan. Silakan buat pengaduan baru.'
+        : 'Belum ada tiket terdaftar di perangkat ini.'
+      }
+    </div>
+  ) : (
               <div className="space-y-3 max-h-72 overflow-y-auto">
                 {mySubmissions.map((c) => (
                   <div
