@@ -772,9 +772,6 @@ const handleForgotRequest = async (e: React.FormEvent) => {
                           className="w-full border border-slate-200 bg-white p-2.5 rounded-lg text-xs font-semibold focus:outline-none"
                         >
                           <option value="pelapor">Pelapor (Siswa / Wali)</option>
-                          <option value="admin">Admin Instansi</option>
-                          <option value="bidang">Staf Bidang (Humas/Sarpras)</option>
-                          <option value="ketuatim">Ketua Tim Penilai</option>
                         </select>
                       </div>
                     </div>
