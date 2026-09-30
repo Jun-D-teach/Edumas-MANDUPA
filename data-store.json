@@ -177,6 +177,34 @@
       "departmentResponse": "Lokasi bocor sudah kami survei. Genteng yang bergeser telah dirapikan sementara oleh staf Sarpras sekolah. Perbaikan plafon yang lapuk akibat air direncanakan akhir pekan ini agar tidak mengganggu kegiatan belajar mengajar.",
       "createdAt": "2026-09-18T16:51:04.746Z",
       "updatedAt": "2026-09-18T20:51:04.746Z"
+    },
+    {
+      "id": "c-d7qd6m3sl",
+      "ticketNumber": "KM-20260930-451",
+      "pelaporName": "junaidi",
+      "pelaporEmail": "dataumumjun@gmail.com",
+      "category": "Hanya Informasi / Aspirasi",
+      "subCategory": "Proses Belajar Mengajar",
+      "title": "makanan nya basi",
+      "description": "mbg nya terasa basi",
+      "anonymous": false,
+      "status": "PENDING",
+      "createdAt": "2026-09-30T02:36:56.505Z",
+      "updatedAt": "2026-09-30T02:36:56.505Z"
+    },
+    {
+      "id": "c-ma9yi8vhu",
+      "ticketNumber": "KM-20260930-670",
+      "pelaporName": "junaidi",
+      "pelaporEmail": "dataumumjun@gmail.com",
+      "category": "Hanya Informasi / Aspirasi",
+      "subCategory": "Fasilitas Kelas & Sarpras",
+      "title": "bau",
+      "description": "bau kelas nya tidak sedap, perlu perbaikan",
+      "anonymous": false,
+      "status": "PENDING",
+      "createdAt": "2026-09-30T02:56:14.358Z",
+      "updatedAt": "2026-09-30T02:56:14.358Z"
     }
   ],
   "logs": [
@@ -242,8 +270,58 @@
       "action": "INPUT_TANGGAPAN_BIDANG",
       "notes": "Memberikan tanggapan draf mengenai hasil survei genteng bocor dan rencana perbaikan.",
       "timestamp": "2026-09-18T20:51:04.746Z"
+    },
+    {
+      "id": "l-dqlbmmp78",
+      "complaintId": "c-d7qd6m3sl",
+      "actorName": "junaidi",
+      "actorRole": "pelapor",
+      "action": "MEMBUAT_ADUAN",
+      "notes": "Pengaduan berhasil didaftarkan dengan Nomor Tiket: KM-20260930-451",
+      "timestamp": "2026-09-30T02:36:56.505Z"
+    },
+    {
+      "id": "l-v4kiqtbdr",
+      "complaintId": "c-ma9yi8vhu",
+      "actorName": "junaidi",
+      "actorRole": "pelapor",
+      "action": "MEMBUAT_ADUAN",
+      "notes": "Pengaduan berhasil didaftarkan dengan Nomor Tiket: KM-20260930-670",
+      "timestamp": "2026-09-30T02:56:14.358Z"
     }
   ],
-  "notifications": [],
+  "notifications": [
+    {
+      "id": "n-7luqb2rty",
+      "targetRole": "admin",
+      "title": "Ada Pengaduan Baru Masuk",
+      "message": "Pengaduan baru \"makanan nya basi\" (Hanya Informasi / Aspirasi - Proses Belajar Mengajar) dengan No. Tiket KM-20260930-451 telah dikirimkan oleh pelapor junaidi. Silakan beralih ke panel untuk meninjau detail.",
+      "type": "complaint",
+      "complaintId": "c-d7qd6m3sl",
+      "read": false,
+      "createdAt": "2026-09-30T02:36:56.898Z"
+    },
+    {
+      "id": "n-rxftdtado",
+      "targetRole": "admin",
+      "title": "Ada Pengaduan Baru Masuk",
+      "message": "Pengaduan baru \"bau\" (Hanya Informasi / Aspirasi - Fasilitas Kelas & Sarpras) dengan No. Tiket KM-20260930-670 telah dikirimkan oleh pelapor junaidi. Silakan beralih ke panel untuk meninjau detail.",
+      "type": "complaint",
+      "complaintId": "c-ma9yi8vhu",
+      "read": false,
+      "createdAt": "2026-09-30T02:56:14.764Z"
+    },
+    {
+      "id": "n-i5wcjjw17",
+      "targetRole": "bidang",
+      "targetDept": "Sarana Prasarana",
+      "title": "Notifikasi Laporan Masuk Terkait Bidang Sarana Prasarana",
+      "message": "Laporan baru bertema \"bau\" (Hanya Informasi / Aspirasi - Fasilitas Kelas & Sarpras) dengan No. Tiket KM-20260930-670 telah diterima. Laporan ini dideteksi relevan dengan bidang tugas Anda. Harap bersiap menunggu penelaahan dan disposisi tugas investigasi resmi dari Admin.",
+      "type": "complaint",
+      "complaintId": "c-ma9yi8vhu",
+      "read": false,
+      "createdAt": "2026-09-30T02:56:14.786Z"
+    }
+  ],
   "gasUrl": "https://script.google.com/macros/s/AKfycbz4m-f-WgI6V__Ev75bQkBLenyop8oKZY7ZefhqIWR_YV4QG6JWCTBAEoAfBWd7YyDf/exec"
 }

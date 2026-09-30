@@ -1047,7 +1047,8 @@ app.post('/api/complaints', async (req, res) => {
   if (!title || !description || !category || !subCategory) {
     return res.status(400).json({ error: 'Kelengkapan aduan (Kategori, Sub Kategori, Judul, Keterangan) harus diisi.' });
   }
-
+console.log('[Complaints]  Menerima laporan baru:', title);
+  console.log('[Complaints] 🔗 GAS URL:', store.gasUrl ? 'ADA' : 'KOSONG');
   const ticketNumber = 'KM-' + new Date().toISOString().slice(0,10).replace(/-/g, '') + '-' + Math.floor(100+Math.random()*900);
 
   const newComplaint: Complaint = {
@@ -1106,6 +1107,9 @@ app.post('/api/complaints', async (req, res) => {
 
   // Sync to GAS sheets
   const gasResult = await syncToGAS('addComplaint', { complaint: newComplaint, log: newLog });
+  console.log('[Complaints] 🔄 Mencoba sync ke Google Sheets...');
+  const gasResult = await syncToGAS('addComplaint', { complaint: newComplaint, log: newLog });
+  console.log('[Complaints] 📡 Response dari GAS:', gasResult);
   if (gasResult && gasResult.success && gasResult.complaint && gasResult.complaint.supportingEvidence) {
     // If GAS uploaded base64 to Google Drive and returned the URL,
     // update local state and file store to keep things tiny and fast!
