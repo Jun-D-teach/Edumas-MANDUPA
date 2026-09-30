@@ -1042,15 +1042,35 @@ function getDepartmentFromSubCategory(subCategory: string): Department {
 }
 
 app.post('/api/complaints', async (req, res) => {
-  const { pelaporName, pelaporEmail, category, subCategory, title, description, anonymous, supportingEvidence, supportingEvidenceName } = req.body;
-
+  const { 
+    pelaporName, 
+    pelaporEmail, 
+    category, 
+    subCategory, 
+    title, 
+    description, 
+    anonymous, 
+    supportingEvidence, 
+    supportingEvidenceName,
+    // ✅ Data pelapor lengkap
+    pelaporNIK,
+    pelaporJenisKelamin,
+    pelaporAlamat,
+    pelaporASN,
+    pelaporNIP,
+    pelaporPekerjaan,
+    pelaporAlamatKantor,
+    pelaporTelp,
+    pelaporKTP,
+    pelaporKTPName
+  } = req.body;
+  
   if (!title || !description || !category || !subCategory) {
     return res.status(400).json({ error: 'Kelengkapan aduan (Kategori, Sub Kategori, Judul, Keterangan) harus diisi.' });
   }
-console.log('[Complaints]  Menerima laporan baru:', title);
-  console.log('[Complaints] 🔗 GAS URL:', store.gasUrl ? 'ADA' : 'KOSONG');
+  
   const ticketNumber = 'KM-' + new Date().toISOString().slice(0,10).replace(/-/g, '') + '-' + Math.floor(100+Math.random()*900);
-
+  
   const newComplaint: Complaint = {
     id: 'c-' + Math.random().toString(36).substr(2, 9),
     ticketNumber,
@@ -1065,11 +1085,22 @@ console.log('[Complaints]  Menerima laporan baru:', title);
     supportingEvidence,
     supportingEvidenceName,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    // ✅ Simpan data pelapor lengkap
+    pelaporNIK: pelaporNIK || '',
+    pelaporJenisKelamin: pelaporJenisKelamin || '',
+    pelaporAlamat: pelaporAlamat || '',
+    pelaporASN: pelaporASN || '',
+    pelaporNIP: pelaporNIP || '',
+    pelaporPekerjaan: pelaporPekerjaan || '',
+    pelaporAlamatKantor: pelaporAlamatKantor || '',
+    pelaporTelp: pelaporTelp || '',
+    pelaporKTP: pelaporKTP || '',
+    pelaporKTPName: pelaporKTPName || ''
   };
-
+  
   store.complaints.push(newComplaint);
-
+  
   const newLog: ActivityLog = {
     id: 'l-' + Math.random().toString(36).substr(2, 9),
     complaintId: newComplaint.id,
@@ -1079,10 +1110,10 @@ console.log('[Complaints]  Menerima laporan baru:', title);
     notes: 'Pengaduan berhasil didaftarkan dengan Nomor Tiket: ' + ticketNumber,
     timestamp: new Date().toISOString()
   };
-
+  
   store.logs.push(newLog);
   saveStore();
-
+  
   // Trigger Notifications for Admin
   await createNotification({
     targetRole: 'admin',
@@ -1091,10 +1122,10 @@ console.log('[Complaints]  Menerima laporan baru:', title);
     type: 'complaint',
     complaintId: newComplaint.id
   });
-
+  
   // Auto detect related department (Waka Bidang) based on subcategory
   const estimatedDept = getDepartmentFromSubCategory(newComplaint.subCategory);
-
+  
   // Trigger Notifications for the related Department (Bidang)
   await createNotification({
     targetRole: 'bidang',
@@ -1104,15 +1135,10 @@ console.log('[Complaints]  Menerima laporan baru:', title);
     type: 'complaint',
     complaintId: newComplaint.id
   });
-
-  // Sync to GAS sheets
+  
+  // ✅ Sync to GAS sheets dengan data lengkap
   const gasResult = await syncToGAS('addComplaint', { complaint: newComplaint, log: newLog });
-  console.log('[Complaints] 🔄 Mencoba sync ke Google Sheets...');
-  const gasResult = await syncToGAS('addComplaint', { complaint: newComplaint, log: newLog });
-  console.log('[Complaints] 📡 Response dari GAS:', gasResult);
   if (gasResult && gasResult.success && gasResult.complaint && gasResult.complaint.supportingEvidence) {
-    // If GAS uploaded base64 to Google Drive and returned the URL,
-    // update local state and file store to keep things tiny and fast!
     newComplaint.supportingEvidence = gasResult.complaint.supportingEvidence;
     const compInStore = store.complaints.find(c => c.id === newComplaint.id);
     if (compInStore) {
@@ -1120,7 +1146,7 @@ console.log('[Complaints]  Menerima laporan baru:', title);
     }
     saveStore();
   }
-
+  
   res.json({ success: true, complaint: newComplaint });
 });
 

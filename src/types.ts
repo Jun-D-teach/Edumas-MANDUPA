@@ -33,20 +33,32 @@ export interface Complaint {
   ticketNumber: string;
   pelaporName: string;
   pelaporEmail: string;
-  category: 'Informasi' | 'Pengaduan Pelanggaran';
-  subCategory: string; // e.g., Perundungan, Fasilitas, Kedisiplinan, Pungutan, dll.
+  category: string;
+  subCategory: string;
   title: string;
   description: string;
   anonymous: boolean;
   status: ComplaintStatus;
-  directInfoAnswer?: string; // Tanggapan langsung jika hanya berupa informasi
-  departmentResponse?: string; // Tanggapan draf dari Bidang Terkait
-  finalAnswer?: string; // Tanggapan akhir yang dikonfirmasi Admin dan dirilis
-  assignedDepartment?: Department; // Bidang Terkait yang ditunjuk
-  supportingEvidence?: string; // Optional base64-encoded supporting file/document
-  supportingEvidenceName?: string; // Optional supporting file name
+  assignedDepartment?: Department;
+  departmentResponse?: string;
+  finalAnswer?: string;
+  directInfoAnswer?: string;
+  supportingEvidence?: string;
+  supportingEvidenceName?: string;
   createdAt: string;
   updatedAt: string;
+  
+  // ✅ TAMBAHKAN FIELD INI untuk data pelapor lengkap
+  pelaporNIK?: string;
+  pelaporJenisKelamin?: string;
+  pelaporAlamat?: string;
+  pelaporASN?: string;
+  pelaporNIP?: string;
+  pelaporPekerjaan?: string;
+  pelaporAlamatKantor?: string;
+  pelaporTelp?: string;
+  pelaporKTP?: string;
+  pelaporKTPName?: string;
 }
 
 export interface ActivityLog {

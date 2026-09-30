@@ -164,22 +164,20 @@ const handleKTPUpload = (file: File) => {
   };
   reader.readAsDataURL(file);
 };
-  const handleFormSubmit = async (e: React.FormEvent) => {
+ const handleFormSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
-  
   if (!title || !description) {
     alert('Judul dan deskripsi wajib diisi.');
     return;
   }
   
-  // VALIDASI: Jika Pengaduan Pelanggaran, data pelapor wajib lengkap
+  // ✅ VALIDASI: Jika Pengaduan Pelanggaran, data pelapor wajib lengkap
   if (category === 'Pengaduan Pelanggaran') {
     if (!user) {
       alert('Anda harus login terlebih dahulu untuk mengirim pengaduan pelanggaran.');
       return;
     }
-    if (!isDataPelaporLengkap()) {
-      setShowDataPelaporWarning(true);
+    if (!pelaporNIK || !pelaporJenisKelamin || !pelaporAlamat || !pelaporPekerjaan || !pelaporTelp || !pelaporKTP) {
       alert('⚠️ Data identitas pelapor belum lengkap! Silakan isi semua field yang bertanda wajib.');
       return;
     }
@@ -187,7 +185,6 @@ const handleKTPUpload = (file: File) => {
   
   setSubmitting(true);
   setSuccessTicket(null);
-  setShowDataPelaporWarning(false);
   
   const senderName = user ? user.name : 'Masyarakat Umum';
   const senderEmail = user ? user.email : '';
@@ -205,20 +202,18 @@ const handleKTPUpload = (file: File) => {
       supportingEvidenceName: evidenceName || undefined
     };
     
-    // Jika Pengaduan Pelanggaran, sertakan data pelapor lengkap
+    // ✅ Jika Pengaduan Pelanggaran, sertakan data pelapor lengkap
     if (category === 'Pengaduan Pelanggaran' && user) {
-      payload.pelaporData = {
-        nik: pelaporNIK,
-        jenisKelamin: pelaporJenisKelamin,
-        alamat: pelaporAlamat,
-        asn: pelaporASN,
-        nip: pelaporNIP,
-        pekerjaan: pelaporPekerjaan,
-        alamatKantor: pelaporAlamatKantor,
-        telp: pelaporTelp,
-        ktpBase64: pelaporKTP,
-        ktpFileName: pelaporKTPName
-      };
+      payload.pelaporNIK = pelaporNIK;
+      payload.pelaporJenisKelamin = pelaporJenisKelamin;
+      payload.pelaporAlamat = pelaporAlamat;
+      payload.pelaporASN = pelaporASN;
+      payload.pelaporNIP = pelaporNIP;
+      payload.pelaporPekerjaan = pelaporPekerjaan;
+      payload.pelaporAlamatKantor = pelaporAlamatKantor;
+      payload.pelaporTelp = pelaporTelp;
+      payload.pelaporKTP = pelaporKTP;
+      payload.pelaporKTPName = pelaporKTPName;
     }
     
     const response = await fetch('/api/complaints', {
@@ -241,6 +236,17 @@ const handleKTPUpload = (file: File) => {
     setEvidenceBase64('');
     setEvidenceName('');
     setSubCategory(subCategories[category][0]);
+    // Reset data pelapor
+    setPelaporNIK('');
+    setPelaporJenisKelamin('');
+    setPelaporAlamat('');
+    setPelaporASN('');
+    setPelaporNIP('');
+    setPelaporPekerjaan('');
+    setPelaporAlamatKantor('');
+    setPelaporTelp('');
+    setPelaporKTP('');
+    setPelaporKTPName('');
     
     await onRefreshComplaints();
   } catch (err: any) {

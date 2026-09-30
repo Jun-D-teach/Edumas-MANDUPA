@@ -1689,13 +1689,55 @@ const handleDeleteUser = async (userId: string) => {
         </div>
       )}
 
-      {/* Detail logs popup modal */}
-      {selectedComplaint && (
-        <ComplaintDetailModal
-          complaint={selectedComplaint}
-          onClose={() => setSelectedComplaint(null)}
-        />
+      {/* Tampilkan Data Pelapor Lengkap jika ada */}
+{(complaint.pelaporNIK || complaint.pelaporTelp) && (
+  <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl space-y-2">
+    <h5 className="font-bold text-indigo-900 text-xs flex items-center gap-2">
+      <Users className="w-4 h-4" />
+      Data Lengkap Pelapor
+    </h5>
+    <div className="grid grid-cols-2 gap-3 text-xs">
+      <div>
+        <span className="text-slate-500 block">NIK:</span>
+        <span className="font-bold text-slate-800">{complaint.pelaporNIK || '-'}</span>
+      </div>
+      <div>
+        <span className="text-slate-500 block">Jenis Kelamin:</span>
+        <span className="font-bold text-slate-800">{complaint.pelaporJenisKelamin || '-'}</span>
+      </div>
+      <div className="col-span-2">
+        <span className="text-slate-500 block">Alamat:</span>
+        <span className="font-bold text-slate-800">{complaint.pelaporAlamat || '-'}</span>
+      </div>
+      <div>
+        <span className="text-slate-500 block">ASN:</span>
+        <span className="font-bold text-slate-800">{complaint.pelaporASN || '-'}</span>
+      </div>
+      <div>
+        <span className="text-slate-500 block">NIP:</span>
+        <span className="font-bold text-slate-800">{complaint.pelaporNIP || '-'}</span>
+      </div>
+      <div>
+        <span className="text-slate-500 block">Pekerjaan:</span>
+        <span className="font-bold text-slate-800">{complaint.pelaporPekerjaan || '-'}</span>
+      </div>
+      <div>
+        <span className="text-slate-500 block">No. Telp:</span>
+        <span className="font-bold text-slate-800">{complaint.pelaporTelp || '-'}</span>
+      </div>
+      {complaint.pelaporKTP && (
+        <div className="col-span-2">
+          <span className="text-slate-500 block">KTP:</span>
+          <img 
+            src={complaint.pelaporKTP} 
+            alt="KTP Pelapor" 
+            className="mt-1 max-w-xs border border-slate-300 rounded"
+          />
+        </div>
       )}
+    </div>
+  </div>
+)}
 
     </div>
   );
