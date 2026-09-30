@@ -33,7 +33,18 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
   const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successTicket, setSuccessTicket] = useState<string | null>(null);
-
+// State untuk data pelapor lengkap (wajib untuk Pengaduan Pelanggaran)
+const [pelaporNIK, setPelaporNIK] = useState('');
+const [pelaporJenisKelamin, setPelaporJenisKelamin] = useState('');
+const [pelaporAlamat, setPelaporAlamat] = useState('');
+const [pelaporASN, setPelaporASN] = useState('');
+const [pelaporNIP, setPelaporNIP] = useState('');
+const [pelaporPekerjaan, setPelaporPekerjaan] = useState('');
+const [pelaporAlamatKantor, setPelaporAlamatKantor] = useState('');
+const [pelaporTelp, setPelaporTelp] = useState('');
+const [pelaporKTP, setPelaporKTP] = useState('');
+const [pelaporKTPName, setPelaporKTPName] = useState('');
+const [showDataPelaporWarning, setShowDataPelaporWarning] = useState(false);
   // File evidence Upload states
   const [evidenceBase64, setEvidenceBase64] = useState<string>('');
   const [evidenceName, setEvidenceName] = useState<string>('');
@@ -84,27 +95,36 @@ const [searchError, setSearchError] = useState('');
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
   // Sub-category options
-  const subCategories: Record<'Informasi' | 'Pengaduan Pelanggaran', string[]> = {
-    'Informasi': [
-      'Proses Belajar Mengajar',
-      'Pendaftaran & Layanan Akademik',
-      'Fasilitas Kelas & Sarpras',
-      'Kegiatan Ekstrakurikuler',
-      'Kalender Pendidikan & Ujian',
-      'Dana BOS & Sumbangan Komite',
-      'Lainnya'
-    ],
-    'Pengaduan Pelanggaran': [
-      'Proses Belajar Mengajar',
-      'Perundungan (Bullying / Cyber-bullying)',
-      'Kekerasan Fisik / Verbal oleh Staf/Siswa',
-      'Pungutan Liar (Pungli)',
-      'Kedisiplinan & Tata Tertib Siswa',
-      'Kualitas Makan / Kantin Madrasah',
-      'Fasilitas Rusak / Sarpras Tidak Layak',
-      'Lainnya (Pelanggaran Kode Etik)'
-    ]
-  };
+  const subCategories: Record<string, string[]> = {
+  'Hanya Informasi / Aspirasi': [
+    'Proses Belajar Mengajar',
+    'Pendaftaran & Layanan Akademik',
+    'Fasilitas Kelas & Sarpras',
+    'Kegiatan Ekstrakurikuler',
+    'Kalender Pendidikan & Ujian',
+    'Dana BOS & Sumbangan Komite',
+    'Lainnya'
+  ],
+  'Informasi': [
+    'Proses Belajar Mengajar',
+    'Pendaftaran & Layanan Akademik',
+    'Fasilitas Kelas & Sarpras',
+    'Kegiatan Ekstrakurikuler',
+    'Kalender Pendidikan & Ujian',
+    'Dana BOS & Sumbangan Komite',
+    'Lainnya'
+  ],
+  'Pengaduan Pelanggaran': [
+    'Proses Belajar Mengajar',
+    'Perundungan (Bullying / Cyber-bullying)',
+    'Kekerasan Fisik / Verbal oleh Staf/Siswa',
+    'Pungutan Liar (Pungli)',
+    'Kedisiplinan & Tata Tertib Siswa',
+    'Kualitas Makan / Kantin Madrasah',
+    'Fasilitas Rusak / Sarpras Tidak Layak',
+    'Lainnya (Pelanggaran Kode Etik)'
+  ]
+};
 
   // Sync category choice
   useEffect(() => {
@@ -116,57 +136,119 @@ const [searchError, setSearchError] = useState('');
     setSavedTicketNumbers(updated);
     localStorage.setItem('km_saved_tickets', JSON.stringify(updated));
   };
+// Cek apakah data pelapor lengkap (untuk Pengaduan Pelanggaran)
+const isDataPelaporLengkap = () => {
+  if (!user) return false; // Harus login
+  return (
+    pelaporNIK.trim() !== '' &&
+    pelaporJenisKelamin !== '' &&
+    pelaporAlamat.trim() !== '' &&
+    pelaporPekerjaan.trim() !== '' &&
+    pelaporTelp.trim() !== '' &&
+    pelaporKTP !== ''
+  );
+};
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !description) return;
-
-    setSubmitting(true);
-    setSuccessTicket(null);
-
-    // Prepare sender metadata
-    const senderName = user ? user.name : 'Masyarakat Umum';
-    const senderEmail = user ? user.email : '';
-
-    try {
-      const response = await fetch('/api/complaints', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pelaporName: senderName,
-          pelaporEmail: senderEmail,
-          category,
-          subCategory,
-          title,
-          description,
-          anonymous,
-          supportingEvidence: evidenceBase64 || undefined,
-          supportingEvidenceName: evidenceName || undefined
-        })
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Gagal mengirim pengaduan');
-      }
-
-      setSuccessTicket(result.complaint.ticketNumber);
-      saveTicketToLocal(result.complaint.ticketNumber);
-      
-      // Clear fields
-      setTitle('');
-      setDescription('');
-      setEvidenceBase64('');
-      setEvidenceName('');
-      
-      // Refresh database
-      await onRefreshComplaints();
-    } catch (err: any) {
-      alert('Error: ' + err.message);
-    } finally {
-      setSubmitting(false);
+// Handler untuk upload KTP
+const handleKTPUpload = (file: File) => {
+  if (file.size > 5 * 1024 * 1024) {
+    alert('Ukuran KTP melebihi 5MB');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    if (e.target?.result) {
+      setPelaporKTP(e.target.result as string);
+      setPelaporKTPName(file.name);
     }
   };
+  reader.readAsDataURL(file);
+};
+  const handleFormSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!title || !description) {
+    alert('Judul dan deskripsi wajib diisi.');
+    return;
+  }
+  
+  // VALIDASI: Jika Pengaduan Pelanggaran, data pelapor wajib lengkap
+  if (category === 'Pengaduan Pelanggaran') {
+    if (!user) {
+      alert('Anda harus login terlebih dahulu untuk mengirim pengaduan pelanggaran.');
+      return;
+    }
+    if (!isDataPelaporLengkap()) {
+      setShowDataPelaporWarning(true);
+      alert('⚠️ Data identitas pelapor belum lengkap! Silakan isi semua field yang bertanda wajib.');
+      return;
+    }
+  }
+  
+  setSubmitting(true);
+  setSuccessTicket(null);
+  setShowDataPelaporWarning(false);
+  
+  const senderName = user ? user.name : 'Masyarakat Umum';
+  const senderEmail = user ? user.email : '';
+  
+  try {
+    const payload: any = {
+      pelaporName: senderName,
+      pelaporEmail: senderEmail,
+      category,
+      subCategory,
+      title,
+      description,
+      anonymous,
+      supportingEvidence: evidenceBase64 || undefined,
+      supportingEvidenceName: evidenceName || undefined
+    };
+    
+    // Jika Pengaduan Pelanggaran, sertakan data pelapor lengkap
+    if (category === 'Pengaduan Pelanggaran' && user) {
+      payload.pelaporData = {
+        nik: pelaporNIK,
+        jenisKelamin: pelaporJenisKelamin,
+        alamat: pelaporAlamat,
+        asn: pelaporASN,
+        nip: pelaporNIP,
+        pekerjaan: pelaporPekerjaan,
+        alamatKantor: pelaporAlamatKantor,
+        telp: pelaporTelp,
+        ktpBase64: pelaporKTP,
+        ktpFileName: pelaporKTPName
+      };
+    }
+    
+    const response = await fetch('/api/complaints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error || 'Gagal mengirim pengaduan');
+    }
+    
+    setSuccessTicket(result.complaint.ticketNumber);
+    saveTicketToLocal(result.complaint.ticketNumber);
+    
+    // Reset form
+    setTitle('');
+    setDescription('');
+    setEvidenceBase64('');
+    setEvidenceName('');
+    setSubCategory(subCategories[category][0]);
+    
+    await onRefreshComplaints();
+  } catch (err: any) {
+    alert('Error: ' + err.message);
+  } finally {
+    setSubmitting(false);
+  }
+};
 
  const handleSearch = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -290,24 +372,22 @@ const mySubmissions = complaints.filter(c => {
   <label className="block text-slate-500 font-bold mb-1.5">
     KATEGORI LAYANAN
   </label>
-  <select
-    value={category}
-    onChange={(e) => setCategory(e.target.value)}
-    className="w-full border border-slate-200 bg-white p-2.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-    required
-  >
-    {/* Selalu tampilkan Informasi/Aspirasi untuk semua user */}
-    <option value="Hanya Informasi / Aspirasi">
-      Hanya Informasi / Aspirasi
-    </option>
-    
-    {/* Tampilkan Pengaduan Pelanggaran HANYA jika user sudah login */}
-    {user && user.isVerified && (
-      <option value="Pengaduan Pelanggaran">
-        Pengaduan Pelanggaran
-      </option>
-    )}
-  </select>
+ <select
+  value={category}
+  onChange={(e) => {
+    const newCat = e.target.value;
+    setCategory(newCat as any);
+    setSubCategory(subCategories[newCat][0]);
+    setShowDataPelaporWarning(false);
+  }}
+  className="w-full border border-slate-200 bg-white p-2.5 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+  required
+>
+  <option value="Hanya Informasi / Aspirasi">Hanya Informasi / Aspirasi</option>
+  {user && user.isVerified && (
+    <option value="Pengaduan Pelanggaran">Pengaduan Pelanggaran</option>
+  )}
+</select>
   
   {/* Tampilkan pesan jika user tamu mencoba akses pengaduan */}
   {!user && category === 'Pengaduan Pelanggaran' && (
@@ -367,7 +447,183 @@ const mySubmissions = complaints.filter(c => {
                   required
                 />
               </div>
-
+{/* FORM DATA PELAPOR - Hanya tampil jika pilih Pengaduan Pelanggaran */}
+{category === 'Pengaduan Pelanggaran' && (
+  <div className={`border-2 rounded-xl p-4 space-y-3 ${
+    showDataPelaporWarning ? 'border-rose-300 bg-rose-50/30' : 'border-indigo-200 bg-indigo-50/30'
+  }`}>
+    <div className="flex items-center gap-2 border-b border-indigo-200 pb-2">
+      <ShieldAlert className="w-4 h-4 text-indigo-700" />
+      <h5 className="font-bold text-indigo-900 text-xs">
+        A. IDENTITAS PELAPOR (WAJIB LENGKAP)
+      </h5>
+    </div>
+    
+    {!user ? (
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+        <p className="font-bold mb-1">⚠️ Perlu Login</p>
+        <p>Untuk mengirim pengaduan pelanggaran, silakan login atau daftar akun terlebih dahulu.</p>
+      </div>
+    ) : (
+      <>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">Nama (Otomatis)</label>
+            <input
+              type="text"
+              value={user.name}
+              disabled
+              className="w-full text-xs border border-slate-200 bg-slate-100 rounded-lg p-2 text-slate-500"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">Email (Otomatis)</label>
+            <input
+              type="email"
+              value={user.email}
+              disabled
+              className="w-full text-xs border border-slate-200 bg-slate-100 rounded-lg p-2 text-slate-500"
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">NIK <span className="text-rose-600">*</span></label>
+            <input
+              type="text"
+              placeholder="16 digit NIK"
+              value={pelaporNIK}
+              onChange={(e) => setPelaporNIK(e.target.value)}
+              maxLength={16}
+              className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">Jenis Kelamin <span className="text-rose-600">*</span></label>
+            <select
+              value={pelaporJenisKelamin}
+              onChange={(e) => setPelaporJenisKelamin(e.target.value)}
+              className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              required
+            >
+              <option value="">-- Pilih --</option>
+              <option value="Laki-laki">Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-[10px] font-bold text-slate-600 mb-1">Alamat Rumah <span className="text-rose-600">*</span></label>
+          <textarea
+            rows={2}
+            value={pelaporAlamat}
+            onChange={(e) => setPelaporAlamat(e.target.value)}
+            placeholder="Alamat lengkap..."
+            className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            required
+          />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">ASN Kemenag</label>
+            <select
+              value={pelaporASN}
+              onChange={(e) => setPelaporASN(e.target.value)}
+              className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            >
+              <option value="">-- Pilih --</option>
+              <option value="Ya">Ya</option>
+              <option value="Tidak">Tidak</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">NIP (jika ASN)</label>
+            <input
+              type="text"
+              value={pelaporNIP}
+              onChange={(e) => setPelaporNIP(e.target.value)}
+              placeholder="NIP 18 digit"
+              className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">Pekerjaan/Unit Kerja <span className="text-rose-600">*</span></label>
+            <input
+              type="text"
+              value={pelaporPekerjaan}
+              onChange={(e) => setPelaporPekerjaan(e.target.value)}
+              placeholder="Contoh: Siswa / Guru / Wali Murid"
+              className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-600 mb-1">Alamat Kantor</label>
+            <input
+              type="text"
+              value={pelaporAlamatKantor}
+              onChange={(e) => setPelaporAlamatKantor(e.target.value)}
+              placeholder="Opsional"
+              className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-[10px] font-bold text-slate-600 mb-1">No. Telp/HP <span className="text-rose-600">*</span></label>
+          <input
+            type="tel"
+            value={pelaporTelp}
+            onChange={(e) => setPelaporTelp(e.target.value)}
+            placeholder="08xxxxxxxxxx"
+            className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-[10px] font-bold text-slate-600 mb-1">Upload KTP <span className="text-rose-600">*</span></label>
+          <div className="border-2 border-dashed border-indigo-200 rounded-lg p-3 text-center bg-white">
+            {pelaporKTPName ? (
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-emerald-700">✓ {pelaporKTPName}</p>
+                <button
+                  type="button"
+                  onClick={() => { setPelaporKTP(''); setPelaporKTPName(''); }}
+                  className="text-[10px] text-rose-600 hover:underline font-bold"
+                >
+                  Hapus
+                </button>
+              </div>
+            ) : (
+              <label className="cursor-pointer">
+                <span className="text-xs text-indigo-700 font-bold hover:underline">📎 Klik untuk upload KTP</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleKTPUpload(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Gambar KTP (Maks. 5MB)</p>
+              </label>
+            )}
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+)}
               {/* Optional Supporting Evidence Upload */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
