@@ -271,14 +271,17 @@ export const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({ comp
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 justify-end flex bg-slate-50">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-lg transition-colors cursor-pointer"
-          >
-            Tutup Detail
-          </button>
-        </div>
+             <div className="p-4 border-t border-slate-100 justify-end flex bg-slate-50">
+       <button
+         onClick={() => {
+           console.log('[Modal] Tombol Tutup diklik');
+           onClose();
+         }}
+         className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+       >
+         Tutup Detail
+       </button>
+     </div>
 
       </div>
     </div>

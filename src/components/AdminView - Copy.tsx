@@ -94,23 +94,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
     '11': 'November',
     '12': 'Desember'
   };
-// Fungsi helper untuk format tanggal agar tidak "Invalid Date"
-const formatDate = (dateString: string) => {
-  if (!dateString) return '-';
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Date';
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  } catch {
-    return 'Invalid Date';
-  }
-};
 
   const handleSaveGasUrl = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,7 +362,23 @@ const formatDate = (dateString: string) => {
       return true;
     });
   };
-
+const handleDeleteUser = async (userId: string) => {
+  try {
+    const response = await fetch(`/api/admin/delete-user/${userId}`, {
+      method: 'DELETE'
+    });
+    const data = await response.json();
+    
+    if (response.ok) {
+      setUsersMessage({ text: data.message, type: 'success' });
+      await fetchUsers(); // Refresh daftar user
+    } else {
+      throw new Error(data.error || 'Gagal menghapus user.');
+    }
+  } catch (err: any) {
+    setUsersMessage({ text: err.message, type: 'error' });
+  }
+};
   // Sort complaints newest first
   const sortedComplaints = [...complaints].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -444,326 +443,7 @@ const formatDate = (dateString: string) => {
               </button>
             </div>
 
-            <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-              {sortedComplaints.length === 0 ? (
-                <div className="text-center py-10 bg-white rounded-2xl border text-slate-400">
-                  Belum ada laporan masuk saat ini.
-                </div>
-              ) : (
-                sortedComplaints.map((c) => (
-                  <div
-                     key={c.id || c.ticketNumber} 
-                    className={`bg-white border rounded-xl p-4 shadow-sm transition-all hover:shadow ${selectedActionRecord?.id === c.id || activePublishRecord?.id === c.id ? 'ring-2 ring-emerald-500 border-transparent bg-emerald-50/10' : 'border-slate-200'}`}
-                    id={`triage-complaint-card-${c.id}`}
-                  >
-                    <div className="flex items-center justify-between text-[11px] mb-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-black text-slate-600 select-all">
-                          {c.ticketNumber}
-                        </span>
-                        <span className="text-slate-400 font-medium">| {new Date(c.createdAt).toLocaleDateString('id-ID')}</span>
-                      </div>
-                      <StatusBadge status={c.status} />
-                    </div>
 
-                    <h4 className="font-bold text-slate-800 text-sm mb-1.5">{c.title}</h4>
-                    <p className="text-slate-500 text-xs leading-relaxed mb-4">{c.description}</p>
- <span>{formatDate(c.createdAt)}</span>
-                    {/* Department / Bidang Info and Reassignment */}
-                    {c.assignedDepartment && (
-                      <div className="mb-4 text-xs bg-indigo-50/40 p-2.5 border border-indigo-100 rounded-xl flex flex-col gap-2 animate-fade-in">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-slate-500 font-medium font-sans">Bidang Penyelidikan:</span>
-                            <span className="font-extrabold text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-150">
-                              Waka {c.assignedDepartment === 'Kaur TU' ? 'Kaur TU' : c.assignedDepartment}
-                            </span>
-                          </div>
-                          {c.status !== 'RESOLVED' && c.status !== 'INFO_ANSWERED' && (
-                            <button
-                              onClick={() => {
-                                setEditingDeptComplaintId(editingDeptComplaintId === c.id ? null : c.id);
-                                setSelectedNewDept(c.assignedDepartment || 'Kesiswaan');
-                              }}
-                              className="text-[10px] text-indigo-650 hover:text-indigo-800 font-bold bg-white border border-slate-250 px-2 py-1 rounded-md transition cursor-pointer"
-                            >
-                              {editingDeptComplaintId === c.id ? 'Batal' : 'Ubah Bidang'}
-                            </button>
-                          )}
-                        </div>
-
-                        {editingDeptComplaintId === c.id && (
-                          <div className="bg-white p-2.5 rounded-lg border border-indigo-100/80 space-y-2 animate-fade-in text-[11px]">
-                            <span className="font-bold text-slate-700 block">Alihkan Bidang Terkait:</span>
-                            <div className="flex gap-2">
-                              <select
-                                value={selectedNewDept}
-                                onChange={(e) => setSelectedNewDept(e.target.value as Department)}
-                                className="flex-1 text-[11px] font-medium border border-slate-200 bg-white rounded p-1 text-slate-800 focus:outline-none"
-                              >
-                                {departments.map((dept) => (
-                                  <option key={dept} value={dept}>
-                                    Waka {dept === 'Kaur TU' ? 'Kaur TU' : dept}
-                                  </option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => handleUpdateComplaintDept(c.id)}
-                                disabled={reassigningDept}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded text-[10px] cursor-pointer disabled:opacity-50"
-                              >
-                                {reassigningDept ? 'Menyimpan...' : 'Simpan'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-250/50 text-xs">
-                      <div className="text-slate-400 font-medium">
-                        Pengirim:{' '}
-                        {c.anonymous ? (
-                          <span className="text-rose-500 font-bold">Anonim</span>
-                        ) : (
-                          <span className="text-slate-600">{c.pelaporName}</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setSelectedComplaint(c)}
-                          className="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-slate-200 font-bold text-[11px] text-slate-700 cursor-pointer"
-                        >
-                          Kronologi
-                        </button>
-
-                        {/* Hapus Pengaduan Action with Confirmation */}
-                        {confirmDeleteId === c.id ? (
-                          <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 rounded-lg p-1 animate-fade-in text-[10px]">
-                            <span className="font-bold text-rose-800 px-1 font-sans">Hapus?</span>
-                            <button
-                              onClick={() => handleDeleteComplaint(c.id)}
-                              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded cursor-pointer"
-                            >
-                              Ya
-                            </button>
-                            <button
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="bg-slate-200 hover:bg-slate-300 text-slate-705 font-bold px-1.5 py-0.5 rounded cursor-pointer"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setConfirmDeleteId(c.id)}
-                            className="px-2.5 py-1.5 rounded bg-rose-50 hover:bg-rose-100 font-bold text-[11px] text-rose-700 cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            Hapus
-                          </button>
-                        )}
-
-                        {/* Step 3 Action: Klasifikasi */}
-                        {c.status === 'PENDING' && (
-                          <button
-                            onClick={() => {
-                              if (selectedActionRecord?.id === c.id) {
-                                setSelectedActionRecord(null);
-                              } else {
-                                setSelectedActionRecord(c);
-                                setActivePublishRecord(null);
-                                setNotes('');
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-sm cursor-pointer transition-all"
-                          >
-                            {selectedActionRecord?.id === c.id ? 'Tutup Form' : 'Klasifikasi / SOP 3'}
-                          </button>
-                        )}
-
-                        {/* Step 6 Action: Finalize approved department responses */}
-                        {c.status === 'APPROVED' && (
-                          <button
-                            onClick={() => {
-                              if (activePublishRecord?.id === c.id) {
-                                setActivePublishRecord(null);
-                              } else {
-                                setActivePublishRecord(c);
-                                setSelectedActionRecord(null);
-                                setFinalPublishAnswer(c.departmentResponse || '');
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] shadow-sm cursor-pointer transition-all"
-                          >
-                            {activePublishRecord?.id === c.id ? 'Tutup Form' : 'Rilis Tanggapan / SOP 6'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Inline SOP 3: Klasifikasi Aduan Block */}
-                    {selectedActionRecord?.id === c.id && (
-                      <div className="mt-4 p-4 border border-emerald-200 bg-emerald-50/5 rounded-xl space-y-4 animate-fade-in text-xs">
-                        <div className="flex items-center gap-2 border-b border-emerald-100 pb-2">
-                          <MessageSquare className="w-4 h-4 text-emerald-600" />
-                          <h5 className="font-bold text-slate-800 text-xs">
-                            SOP 3: Formulir Klasifikasi Tiket ({c.ticketNumber})
-                          </h5>
-                        </div>
-
-                        <form onSubmit={handleClassifySubmit} className="space-y-4">
-                          <div>
-                            <label className="block font-bold text-slate-600 mb-2">
-                              Tentukan Hasil Klasifikasi Tiket:
-                            </label>
-                            <div className="grid grid-cols-2 gap-3">
-                              <button
-                                type="button"
-                                onClick={() => setClassificationType('Pengaduan Pelanggaran')}
-                                className={`p-2 rounded-xl border text-center font-bold transition-all cursor-pointer ${classificationType === 'Pengaduan Pelanggaran' ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-200 hover:bg-slate-50 text-slate-500'}`}
-                              >
-                                Pengaduan Pelanggaran
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setClassificationType('Informasi')}
-                                className={`p-2 rounded-xl border text-center font-bold transition-all cursor-pointer ${classificationType === 'Informasi' ? 'border-sky-600 bg-sky-50 text-sky-800' : 'border-slate-200 hover:bg-slate-50 text-slate-500'}`}
-                              >
-                                Hanya Informasi / Tanya
-                              </button>
-                            </div>
-                          </div>
-
-                          {classificationType === 'Informasi' ? (
-                            <div className="space-y-3 p-3 bg-sky-50/50 border border-sky-100 rounded-xl animate-fade-in">
-                              <div className="text-slate-500 text-[11px] leading-relaxed">
-                                <b>💡 Solusi Cepat (Informasi):</b> Anda (Admin) dapat langsung menjawab & merilis jawaban kepada pelapor tanpa perlu melibatkan Waka/Bidang Terkait.
-                              </div>
-                              <div>
-                                <label className="block font-bold text-slate-600 mb-1.5">
-                                  Tulis Jawaban Informasi Resmi:
-                                </label>
-                                <textarea
-                                  rows={4}
-                                  value={directInfoAnswer}
-                                  onChange={(e) => setDirectInfoAnswer(e.target.value)}
-                                  placeholder="Tuliskan petunjuk / jawaban resmi sejelas mungkin..."
-                                  className="w-full text-xs border border-slate-200 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                                  required
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-3 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl animate-fade-in">
-                              <div className="text-slate-500 text-[11px] leading-relaxed">
-                                <b>💡 Penyeledikan Disposisi (Pengaduan):</b> Laporan ini akan dipindahkan secara rahasia ke dashboard Bidang Terkait untuk divalidasi dan ditanggapi.
-                              </div>
-                              <div>
-                                <label className="block font-bold text-slate-700 mb-1.5">
-                                  Tunjuk Bidang Utama Penanggung Jawab:
-                                </label>
-                                <select
-                                  value={assignedDepartment}
-                                  onChange={(e: any) => setAssignedDepartment(e.target.value)}
-                                  className="w-full border border-slate-200 bg-white p-2 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                >
-                                  {departments.map((dept) => (
-                                    <option key={dept} value={dept}>{dept === 'Kaur TU' ? 'Kaur TU' : `Waka Bidang ${dept}`}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          )}
-
-                          <div>
-                            <label className="block font-bold text-slate-600 mb-1.5">
-                              Catatan Riwayat Log Tambahan (Opsional):
-                            </label>
-                            <input
-                              type="text"
-                              value={notes}
-                              onChange={(e) => setNotes(e.target.value)}
-                              placeholder="Dokumen pelengkap valid / sanksi disposisi awal..."
-                              className="w-full border border-slate-200 p-2 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                            />
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedActionRecord(null)}
-                              className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all cursor-pointer"
-                            >
-                              Batalkan
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={submittingAction}
-                              className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-1.5"
-                            >
-                              {submittingAction ? 'Menyimpan...' : 'Kirim Klasifikasi'}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    )}
-
-                    {/* Inline SOP 6: Finalize/Publish Response Block */}
-                    {activePublishRecord?.id === c.id && (
-                      <div className="mt-4 p-4 border border-indigo-200 bg-indigo-50/5 rounded-xl space-y-4 animate-fade-in text-xs">
-                        <div className="flex items-center gap-2 border-b border-indigo-100 pb-2">
-                          <Check className="w-4 h-4 text-indigo-700" />
-                          <h5 className="font-bold text-slate-800 text-xs">
-                            SOP 6: Form Rilis Jawaban Resmi ({c.ticketNumber})
-                          </h5>
-                        </div>
-
-                        <div className="p-3 bg-white border border-indigo-100 rounded-lg space-y-1">
-                          <div className="font-bold text-indigo-900 text-[11px]">Draf Hasil Investigasi Bidang ({c.assignedDepartment}):</div>
-                          <p className="italic text-slate-600 font-medium">"{c.departmentResponse}"</p>
-                        </div>
-
-                        <form onSubmit={handleFinalizePublishSubmit} className="space-y-4">
-                          <div>
-                            <label className="block font-bold text-slate-600 mb-1.5">
-                              Tinjau / Sesuaikan Redaksi Jawaban yang Dikirim ke Pelapor:
-                            </label>
-                            <textarea
-                              rows={4}
-                              value={finalPublishAnswer}
-                              onChange={(e) => setFinalPublishAnswer(e.target.value)}
-                              placeholder="Konfirmasi rumusan penyelesaian..."
-                              className="w-full text-xs border border-slate-200 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"
-                              required
-                            />
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setActivePublishRecord(null)}
-                              className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all cursor-pointer"
-                            >
-                              Batal
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={submittingAction}
-                              className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all cursor-pointer"
-                            >
-                              {submittingAction ? 'Merilis...' : 'Rilis & Tutup Pengaduan'}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
 
           {/* Right Column: Live Statistics & EDUMAS SOP Steps */}
           <div className="lg:col-span-5 space-y-6">
@@ -1481,6 +1161,7 @@ const formatDate = (dateString: string) => {
                   >
                     Batal
                   </button>
+                 
                 </div>
               </div>
             </div>
@@ -1546,6 +1227,19 @@ const formatDate = (dateString: string) => {
                             <code className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 animate-pulse">
                               {item.password || 'man2plg123'}
                             </code>
+                             <button
+      onClick={() => {
+        if (window.confirm(`Yakin ingin menghapus akun ${item.name}? Tindakan ini tidak dapat dibatalkan.`)) {
+          handleDeleteUser(item.id);
+        }
+      }}
+      disabled={item.id === user.id} // Jangan izinkan hapus akun sendiri
+      className="px-2.5 py-1 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 rounded-lg text-xs font-extrabold transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+      title={item.id === user.id ? "Tidak dapat menghapus akun sendiri" : "Hapus akun"}
+    >
+      <Trash2 className="w-3.5 h-3.5" />
+      Hapus
+    </button>
                           </div>
                         </td>
                         <td className="p-3 text-center">
@@ -1562,6 +1256,7 @@ const formatDate = (dateString: string) => {
                             <Edit3 className="w-3.5 h-3.5 text-indigo-500" />
                             Ubah Detail & Sandi
                           </button>
+                          
                         </td>
                       </tr>
                     ))
@@ -1675,14 +1370,4 @@ const formatDate = (dateString: string) => {
         </div>
       )}
 
-      {/* Detail logs popup modal */}
-      {selectedComplaint && (
-        <ComplaintDetailModal
-          complaint={selectedComplaint}
-          onClose={() => setSelectedComplaint(null)}
-        />
-      )}
-
-    </div>
-  );
-};
+      

@@ -929,14 +929,13 @@ app.post('/api/notifications/mark-all-read', (req, res) => {
 
 // Complaints Routes
 // Tambahkan variable untuk cache timestamp
-// Tambahkan variable untuk cache
 let lastComplaintsFetch = 0;
 const COMPLAINTS_CACHE_DURATION = 30000; // 30 detik
 
 app.get('/api/complaints', async (req, res) => {
   const now = Date.now();
   
-  // Jika GAS configured dan cache sudah expired
+  // Hanya fetch dari GAS jika cache sudah expired (30 detik)
   if (store.gasUrl && (now - lastComplaintsFetch > COMPLAINTS_CACHE_DURATION)) {
     try {
       console.log('[Complaints] 🔄 Refresh data dari Google Sheets...');
@@ -948,50 +947,10 @@ app.get('/api/complaints', async (req, res) => {
       
       if (response.ok) {
         const result = await response.json();
-        console.log('[Complaints] Response GAS:', result);
-        
-        if (result.success && result.complaints && result.complaints.length > 0) {
-          // Update local store dengan data dari GAS
-          const gasComplaints = result.complaints.map((c: any) => ({
-            ...c,
-            // Pastikan field-field penting ada
-            id: c.id || c.ID || '',
-            ticketNumber: c.ticketNumber || c['Nomor Tiket'] || '',
-            pelaporName: c.pelaporName || c['Nama Pelapor'] || '',
-            pelaporEmail: c.pelaporEmail || c['Email Pelapor'] || '',
-            category: c.category || c.Kategori || '',
-            subCategory: c.subCategory || c['Sub Kategori'] || '',
-            title: c.title || c.Judul || '',
-            description: c.description || c.Keterangan || '',
-            anonymous: c.anonymous === 'YA' || c.anonymous === true || false,
-            status: c.status || c.Status || 'PENDING',
-            assignedDepartment: c.assignedDepartment || c['Bidang Terkait'] || '',
-            directInfoAnswer: c.directInfoAnswer || c['Jawaban Informasi Langsung'] || '',
-            departmentResponse: c.departmentResponse || c['Tanggapan Bidang'] || '',
-            finalAnswer: c.finalAnswer || c['Jawaban Akhir'] || '',
-            createdAt: c.createdAt || c['Tanggal Dibuat'] || new Date().toISOString(),
-            updatedAt: c.updatedAt || c['Tanggal Diupdate'] || new Date().toISOString(),
-            supportingEvidence: c.supportingEvidence || c['File Bukti'] || '',
-            // Field pelapor
-            pelaporNIK: c.pelaporNIK || c['NIK Pelapor'] || '',
-            pelaporJenisKelamin: c.pelaporJenisKelamin || c['Jenis Kelamin'] || '',
-            pelaporAlamat: c.pelaporAlamat || c.Alamat || '',
-            pelaporASN: c.pelaporASN || c.ASN || '',
-            pelaporNIP: c.pelaporNIP || c.NIP || '',
-            pelaporPekerjaan: c.pelaporPekerjaan || c.Pekerjaan || '',
-            pelaporAlamatKantor: c.pelaporAlamatKantor || c['Alamat Kantor'] || '',
-            pelaporTelp: c.pelaporTelp || c['No. Telp'] || '',
-            pelaporKTP: c.pelaporKTP || '',
-            pelaporKTPName: c.pelaporKTPName || c['Nama File KTP'] || ''
-          }));
-          
-          store.complaints = gasComplaints;
+        if (result.success && result.complaints) {
+          store.complaints = result.complaints;
           lastComplaintsFetch = now;
-          
-          console.log(`[Complaints] ✅ Berhasil mengambil ${gasComplaints.length} complaints dari GAS`);
-          console.log('[Complaints] Sample data:', gasComplaints[0]);
-          
-          return res.json(gasComplaints);
+          console.log(`[Complaints] ✅ Cache updated: ${result.complaints.length} complaints`);
         }
       }
     } catch (err) {
@@ -999,8 +958,7 @@ app.get('/api/complaints', async (req, res) => {
     }
   }
   
-  // Fallback ke local store
-  console.log(`[Complaints] Menggunakan ${store.complaints.length} complaints dari local store`);
+  // Selalu return dari local store (sudah di-cache)
   res.json(store.complaints);
 });
 // Endpoint untuk mencari tiket berdasarkan nomor tiket
