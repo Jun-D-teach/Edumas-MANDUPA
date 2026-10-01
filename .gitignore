@@ -8,3 +8,4 @@ coverage/
 !.env.example
 1_server.ts
 data-store.json
+1 GAS.txt

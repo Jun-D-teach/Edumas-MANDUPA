@@ -1056,19 +1056,83 @@ app.get('/api/complaints/search/:ticketNumber', async (req, res) => {
     success: false 
   });
 });
-app.delete('/api/complaints/:id', (req, res) => {
+app.delete('/api/complaints/:id', async (req, res) => {
   const complaintId = req.params.id;
+  
+  console.log('═══════════════════════════════════════');
+  console.log('[DELETE] ️  Memulai proses hapus...');
+  console.log('[DELETE]  ID yang akan dihapus:', complaintId);
+  
   const complaintIndex = store.complaints.findIndex(c => c.id === complaintId);
+  
   if (complaintIndex === -1) {
+    console.log('[DELETE] ❌ ID tidak ditemukan di local store');
     return res.status(404).json({ error: 'Pengaduan tidak ditemukan.' });
   }
+  
+  // Simpan data sebelum dihapus
+  const deletedComplaint = { ...store.complaints[complaintIndex] };
+  console.log('[DELETE]  Data yang akan dihapus:', {
+    id: deletedComplaint.id,
+    ticketNumber: deletedComplaint.ticketNumber,
+    title: deletedComplaint.title
+  });
+  
+  // 1. Hapus dari local store
   store.complaints.splice(complaintIndex, 1);
   store.logs = store.logs.filter(l => l.complaintId !== complaintId);
   if (store.notifications) {
     store.notifications = store.notifications.filter(n => n.complaintId !== complaintId);
   }
   saveStore();
-  return res.json({ success: true, message: 'Laporan pengaduan berhasil dihapus beserta log kegiatannya.' });
+  console.log('[DELETE] ✅ Berhasil hapus dari local store (JSON)');
+  
+  // 2. Hapus dari Google Sheets
+  if (store.gasUrl) {
+    console.log('[DELETE] 🔗 GAS URL:', store.gasUrl);
+    console.log('[DELETE]  Mengirim perintah hapus ke Google Sheets...');
+    
+    try {
+      const response = await fetch(store.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'deleteComplaint',
+          data: {
+            complaintId: deletedComplaint.id,
+            ticketNumber: deletedComplaint.ticketNumber
+          }
+        })
+      });
+      
+      console.log('[DELETE] 📡 HTTP Status:', response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('[DELETE] 📥 Response dari GAS:', result);
+        
+        if (result.success) {
+          console.log('[DELETE] ✅✅✅ BERHASIL HAPUS DARI GOOGLE SHEETS!');
+        } else {
+          console.log('[DELETE] ️  GAS melaporkan gagal:', result.error);
+        }
+      } else {
+        const errorText = await response.text();
+        console.log('[DELETE] ❌ HTTP Error:', response.status, errorText);
+      }
+    } catch (err) {
+      console.error('[DELETE] ❌ Exception saat memanggil GAS:', err);
+    }
+  } else {
+    console.log('[DELETE] ️  GAS URL kosong, skip hapus dari sheet');
+  }
+  
+  console.log('═══════════════════════════════════════');
+  
+  return res.json({ 
+    success: true, 
+    message: 'Pengaduan berhasil dihapus.' 
+  });
 });
 
 app.get('/api/complaints/:id/logs', (req, res) => {
