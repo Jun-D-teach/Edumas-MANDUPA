@@ -28,11 +28,14 @@ export const PelaporView: React.FC<PelaporViewProps> = ({ user, complaints, onRe
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<'Informasi' | 'Pengaduan Pelanggaran'>('Pengaduan Pelanggaran');
+  // ✅ Default ke Informasi agar tamu bisa langsung isi tanpa blokir
+const [category, setCategory] = useState<'Hanya Informasi / Aspirasi' | 'Pengaduan Pelanggaran'>('Hanya Informasi / Aspirasi');
   const [subCategory, setSubCategory] = useState('Perundungan (Bullying)');
   const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successTicket, setSuccessTicket] = useState<string | null>(null);
+  const [pelaporName, setPelaporName] = useState('');
+const [pelaporEmail, setPelaporEmail] = useState('');
 // State untuk data pelapor lengkap (wajib untuk Pengaduan Pelanggaran)
 const [pelaporNIK, setPelaporNIK] = useState('');
 const [pelaporJenisKelamin, setPelaporJenisKelamin] = useState('');
@@ -164,14 +167,16 @@ const handleKTPUpload = (file: File) => {
   };
   reader.readAsDataURL(file);
 };
- const handleFormSubmit = async (e: React.FormEvent) => {
+const handleFormSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
-  if (!title || !description) {
+  
+  // 1. Validasi dasar
+  if (!title.trim() || !description.trim()) {
     alert('Judul dan deskripsi wajib diisi.');
     return;
   }
-  
-  // ✅ VALIDASI: Jika Pengaduan Pelanggaran, data pelapor wajib lengkap
+
+  // 2. Validasi khusus Pengaduan Pelanggaran (WAJIB login + data lengkap)
   if (category === 'Pengaduan Pelanggaran') {
     if (!user) {
       alert('Anda harus login terlebih dahulu untuk mengirim pengaduan pelanggaran.');
@@ -182,14 +187,25 @@ const handleKTPUpload = (file: File) => {
       return;
     }
   }
-  
+
   setSubmitting(true);
   setSuccessTicket(null);
-  
-  const senderName = user ? user.name : 'Masyarakat Umum';
-  const senderEmail = user ? user.email : '';
-  
+
   try {
+    // Tentukan nama & email pengirim
+    let senderName = 'Masyarakat Umum';
+    let senderEmail = '';
+
+    if (user) {
+      // Jika login, pakai data user
+      senderName = user.name;
+      senderEmail = user.email;
+    } else if (category === 'Hanya Informasi / Aspirasi') {
+      // Jika tamu kirim informasi, pakai input manual (boleh kosong)
+      senderName = pelaporName.trim() || 'Masyarakat Umum';
+      senderEmail = pelaporEmail.trim() || '';
+    }
+
     const payload: any = {
       pelaporName: senderName,
       pelaporEmail: senderEmail,
@@ -201,8 +217,8 @@ const handleKTPUpload = (file: File) => {
       supportingEvidence: evidenceBase64 || undefined,
       supportingEvidenceName: evidenceName || undefined
     };
-    
-    // ✅ Jika Pengaduan Pelanggaran, sertakan data pelapor lengkap
+
+    // Jika Pengaduan Pelanggaran + login, sertakan data lengkap
     if (category === 'Pengaduan Pelanggaran' && user) {
       payload.pelaporNIK = pelaporNIK;
       payload.pelaporJenisKelamin = pelaporJenisKelamin;
@@ -215,28 +231,29 @@ const handleKTPUpload = (file: File) => {
       payload.pelaporKTP = pelaporKTP;
       payload.pelaporKTPName = pelaporKTPName;
     }
-    
+
     const response = await fetch('/api/complaints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    
+
     const result = await response.json();
     if (!response.ok) {
       throw new Error(result.error || 'Gagal mengirim pengaduan');
     }
-    
+
     setSuccessTicket(result.complaint.ticketNumber);
     saveTicketToLocal(result.complaint.ticketNumber);
-    
+
     // Reset form
     setTitle('');
     setDescription('');
     setEvidenceBase64('');
     setEvidenceName('');
+    setPelaporName('');
+    setPelaporEmail('');
     setSubCategory(subCategories[category][0]);
-    // Reset data pelapor
     setPelaporNIK('');
     setPelaporJenisKelamin('');
     setPelaporAlamat('');
@@ -247,15 +264,14 @@ const handleKTPUpload = (file: File) => {
     setPelaporTelp('');
     setPelaporKTP('');
     setPelaporKTPName('');
-    
+
     await onRefreshComplaints();
   } catch (err: any) {
     alert('Error: ' + err.message);
   } finally {
-    setSubmitting(false);
+    setSubmitting(false); // ✅ Ini yang membuat tombol berhenti muter
   }
 };
-
  const handleSearch = async (e: React.FormEvent) => {
   e.preventDefault();
   
@@ -454,10 +470,8 @@ const mySubmissions = complaints.filter(c => {
                 />
               </div>
 {/* FORM DATA PELAPOR - Hanya tampil jika pilih Pengaduan Pelanggaran */}
-{category === 'Pengaduan Pelanggaran' && (
-  <div className={`border-2 rounded-xl p-4 space-y-3 ${
-    showDataPelaporWarning ? 'border-rose-300 bg-rose-50/30' : 'border-indigo-200 bg-indigo-50/30'
-  }`}>
+{category === 'Pengaduan Pelanggaran' && user && (
+  <div className="border-2 rounded-xl p-4 space-y-3 border-indigo-200 bg-indigo-50/30">
     <div className="flex items-center gap-2 border-b border-indigo-200 pb-2">
       <ShieldAlert className="w-4 h-4 text-indigo-700" />
       <h5 className="font-bold text-indigo-900 text-xs">
@@ -709,24 +723,55 @@ const mySubmissions = complaints.filter(c => {
                   <span className={`w-4 id-circle h-4 bg-white rounded-full transition-transform absolute shadow-sm ${anonymous ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
-
+{/* Field Nama & Email untuk Tamu - Hanya muncul jika belum login DAN kategori Informasi */}
+{!user && category === 'Hanya Informasi / Aspirasi' && (
+  <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/50 border border-amber-200 rounded-xl">
+    <div>
+      <label className="block text-[10px] font-bold text-slate-600 mb-1">
+        Nama Anda (Opsional)
+      </label>
+      <input
+        type="text"
+        placeholder="Contoh: Budi Santoso"
+        value={pelaporName}
+        onChange={(e) => setPelaporName(e.target.value)}
+        className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+      />
+    </div>
+    <div>
+      <label className="block text-[10px] font-bold text-slate-600 mb-1">
+        Email (Opsional - untuk notifikasi)
+      </label>
+      <input
+        type="email"
+        placeholder="contoh@email.com"
+        value={pelaporEmail}
+        onChange={(e) => setPelaporEmail(e.target.value)}
+        className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+      />
+    </div>
+    <p className="col-span-2 text-[10px] text-amber-700">
+      💡 Kosongkan jika ingin tetap anonim. Data ini hanya untuk keperluan notifikasi.
+    </p>
+  </div>
+)}
               <button
-                type="submit"
-                disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/10 transition-colors cursor-pointer"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Mengirim laporan aman...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>Kirim Pengaduan Ke Sistem</span>
-                  </>
-                )}
-              </button>
+  type="submit"
+  disabled={submitting} 
+  className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {submitting ? (
+    <>
+      <Loader2 className="w-4 h-4 animate-spin" />
+      <span>Mengirim laporan aman...</span>
+    </>
+  ) : (
+    <>
+      <Send className="w-4 h-4" />
+      <span>Kirim Pengaduan Ke Sistem</span>
+    </>
+  )}
+</button>
             </form>
           )}
         </div>
