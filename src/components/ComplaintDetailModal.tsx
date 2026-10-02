@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, User, EyeOff, LayoutList, MessageSquare, History, ArrowRight, Paperclip } from 'lucide-react';
+import { X, Calendar, User, EyeOff, LayoutList, MessageSquare, History, ArrowRight, Paperclip, IdCard, Phone, MapPin, Briefcase } from 'lucide-react';
 import { Complaint, ActivityLog } from '../types.js';
 import { StatusBadge } from './RoleBadge.js';
 
@@ -23,7 +23,6 @@ export const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({ comp
         const response = await fetch(`/api/complaints/${complaint.id}/logs`);
         if (response.ok) {
           const data = await response.json();
-          // Sort logs newest first
           setLogs(data.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         }
       } catch (err) {
@@ -111,6 +110,126 @@ export const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({ comp
               </div>
             </div>
           </div>
+
+          {/* ✅ DATA LENGKAP PELAPOR - Tampilkan jika ada */}
+          {(complaint.pelaporNIK || complaint.pelaporTelp || complaint.pelaporKTP) && (
+            <div className="space-y-3 border-2 border-indigo-200 rounded-xl p-4 bg-indigo-50/30">
+              <div className="flex items-center gap-2 border-b border-indigo-200 pb-2">
+                <IdCard className="w-4 h-4 text-indigo-700" />
+                <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                  Data Lengkap Pelapor
+                </h4>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {complaint.pelaporNIK && (
+                  <div>
+                    <span className="text-slate-500 block font-medium">NIK</span>
+                    <span className="font-semibold text-slate-800 font-mono">{complaint.pelaporNIK}</span>
+                  </div>
+                )}
+                
+                {complaint.pelaporJenisKelamin && (
+                  <div>
+                    <span className="text-slate-500 block font-medium">Jenis Kelamin</span>
+                    <span className="font-semibold text-slate-800">{complaint.pelaporJenisKelamin}</span>
+                  </div>
+                )}
+                
+                {complaint.pelaporAlamat && (
+                  <div className="md:col-span-2">
+                    <span className="text-slate-500 block font-medium flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      Alamat
+                    </span>
+                    <span className="font-semibold text-slate-800">{complaint.pelaporAlamat}</span>
+                  </div>
+                )}
+                
+                {complaint.pelaporASN && (
+                  <div>
+                    <span className="text-slate-500 block font-medium">Status ASN</span>
+                    <span className={`font-semibold px-2 py-0.5 rounded inline-block ${
+                      complaint.pelaporASN === 'Ya' 
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}>
+                      {complaint.pelaporASN}
+                    </span>
+                  </div>
+                )}
+                
+                {complaint.pelaporNIP && (
+                  <div>
+                    <span className="text-slate-500 block font-medium">NIP</span>
+                    <span className="font-semibold text-slate-800 font-mono">{complaint.pelaporNIP}</span>
+                  </div>
+                )}
+                
+                {complaint.pelaporPekerjaan && (
+                  <div>
+                    <span className="text-slate-500 block font-medium flex items-center gap-1">
+                      <Briefcase className="w-3.5 h-3.5" />
+                      Pekerjaan
+                    </span>
+                    <span className="font-semibold text-slate-800">{complaint.pelaporPekerjaan}</span>
+                  </div>
+                )}
+                
+                {complaint.pelaporAlamatKantor && (
+                  <div className="md:col-span-2">
+                    <span className="text-slate-500 block font-medium">Alamat Kantor</span>
+                    <span className="font-semibold text-slate-800">{complaint.pelaporAlamatKantor}</span>
+                  </div>
+                )}
+                
+                {complaint.pelaporTelp && (
+                  <div>
+                    <span className="text-slate-500 block font-medium flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5" />
+                      No. Telepon
+                    </span>
+                    <span className="font-semibold text-slate-800 font-mono">{complaint.pelaporTelp}</span>
+                  </div>
+                )}
+                
+                {/* ✅ UPLOAD KTP - Tampilkan jika ada */}
+                {complaint.pelaporKTP && (
+                  <div className="md:col-span-2 space-y-2 pt-2 border-t border-indigo-200">
+                    <span className="text-slate-500 block font-medium text-[11px] uppercase tracking-wider">
+                      Upload KTP (Bukti Identitas)
+                    </span>
+                    <div className="border-2 border-dashed border-indigo-200 rounded-xl p-3 bg-white">
+                      {complaint.pelaporKTPName && (
+                        <p className="text-[10px] text-slate-500 mb-2 font-mono">
+                          📎 {complaint.pelaporKTPName}
+                        </p>
+                      )}
+                      {complaint.pelaporKTP.startsWith('data:image/') ? (
+                        <div className="border border-indigo-200 rounded-lg overflow-hidden bg-slate-50 flex items-center justify-center">
+                          <img
+                            src={complaint.pelaporKTP}
+                            alt="KTP Pelapor"
+                            className="max-w-full max-h-[300px] object-contain"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      ) : (
+                        <a
+                          href={complaint.pelaporKTP}
+                          download={complaint.pelaporKTPName || 'ktp-pelapor'}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm transition-colors text-[10px] cursor-pointer"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                          Unduh File KTP
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           <div className="space-y-2">
@@ -271,17 +390,17 @@ export const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({ comp
         </div>
 
         {/* Footer */}
-             <div className="p-4 border-t border-slate-100 justify-end flex bg-slate-50">
-       <button
-         onClick={() => {
-           console.log('[Modal] Tombol Tutup diklik');
-           onClose();
-         }}
-         className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-       >
-         Tutup Detail
-       </button>
-     </div>
+        <div className="p-4 border-t border-slate-100 justify-end flex bg-slate-50">
+          <button
+            onClick={() => {
+              console.log('[Modal] Tombol Tutup diklik');
+              onClose();
+            }}
+            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+          >
+            Tutup Detail
+          </button>
+        </div>
 
       </div>
     </div>
