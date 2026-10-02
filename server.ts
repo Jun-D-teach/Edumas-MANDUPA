@@ -1271,14 +1271,19 @@ app.post('/api/complaints', async (req, res) => {
   });
   
   // ✅ Sync to GAS sheets dengan data lengkap
-  const gasResult = await syncToGAS('addComplaint', { complaint: newComplaint, log: newLog });
-  if (gasResult && gasResult.success && gasResult.complaint && gasResult.complaint.supportingEvidence) {
-    newComplaint.supportingEvidence = gasResult.complaint.supportingEvidence;
-    const compInStore = store.complaints.find(c => c.id === newComplaint.id);
-    if (compInStore) {
-      compInStore.supportingEvidence = gasResult.complaint.supportingEvidence;
-    }
-    saveStore();
+  // PENTING: Kita hapus pelaporKTP (base64) agar tidak melebihi batas 50.000 karakter Google Sheets
+  const complaintForGAS = { ...newComplaint };
+  delete complaintForGAS.pelaporKTP; // Hapus base64 sebelum kirim ke GAS
+
+  const gasResult = await syncToGAS('addComplaint', { 
+    complaint: complaintForGAS, 
+    log: newLog 
+  });
+
+  if (gasResult && gasResult.success) {
+    console.log('[Complaints] ✅ Berhasil sync ke Google Sheets (tanpa base64 KTP)');
+  } else {
+    console.warn('[Complaints] ⚠️ Gagal sync ke Google Sheets:', gasResult?.error || 'Unknown error');
   }
   
   res.json({ success: true, complaint: newComplaint });
