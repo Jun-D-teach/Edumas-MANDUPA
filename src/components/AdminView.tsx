@@ -245,42 +245,64 @@ const formatDate = (dateString: string) => {
   };
 
   const handleUpdateUser = async (userId: string) => {
-    if (!usersNewName.trim() || !usersNewEmail.trim() || !usersNewPassword.trim()) {
-      alert('Semua data wajib diisi.');
-      return;
-    }
-    setUpdatingUsersPassword(true);
-    setUsersMessage(null);
-    try {
-      const response = await fetch('/api/admin/update-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          userId, 
-          name: usersNewName.trim(), 
-          email: usersNewEmail.trim().toLowerCase(), 
-          password: usersNewPassword.trim() 
-        })
+  if (!usersNewName.trim() || !usersNewEmail.trim() || !usersNewPassword.trim()) {
+    alert('Semua data wajib diisi.');
+    return;
+  }
+  
+  console.log('[UpdateUser] Memulai update untuk userId:', userId);
+  console.log('[UpdateUser] Data baru:', { 
+    name: usersNewName.trim(), 
+    email: usersNewEmail.trim().toLowerCase(), 
+    password: usersNewPassword.trim() 
+  });
+  
+  setUpdatingUsersPassword(true);
+  setUsersMessage(null);
+  
+  try {
+    const response = await fetch('/api/admin/update-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        name: usersNewName.trim(),
+        email: usersNewEmail.trim().toLowerCase(),
+        password: usersNewPassword.trim()
+      })
+    });
+    
+    console.log('[UpdateUser] HTTP Status:', response.status);
+    
+    const data = await response.json();
+    console.log('[UpdateUser] Response:', data);
+    
+    if (response.ok && data.success) {
+      setUsersMessage({ 
+        text: data.message || 'Profil akun sukses diperbarui!', 
+        type: 'success' 
       });
-      const data = await response.json();
-      if (response.ok) {
-        setUsersMessage({ text: data.message || 'Profil akun sukses diperbarui!', type: 'success' });
-        setEditingUserId(null);
-        setUsersNewPassword('');
-        setUsersNewName('');
-        setUsersNewEmail('');
-        await fetchUsers();
-      } else {
-        throw new Error(data.error || 'Gagal memperbarui data akun.');
-      }
-    } catch (err: any) {
-      setUsersMessage({ text: err.message, type: 'error' });
-    } finally {
-      setUpdatingUsersPassword(false);
+      setEditingUserId(null);
+      setUsersNewPassword('');
+      setUsersNewName('');
+      setUsersNewEmail('');
+      
+      // Refresh daftar user
+      await fetchUsers();
+      
+      // Tampilkan alert sukses
+      alert('✅ ' + (data.message || 'Data petugas berhasil diperbarui!'));
+    } else {
+      throw new Error(data.error || 'Gagal memperbarui data akun.');
     }
-  };
+  } catch (err: any) {
+    console.error('[UpdateUser] Error:', err);
+    setUsersMessage({ text: err.message, type: 'error' });
+    alert('❌ Error: ' + err.message);
+  } finally {
+    setUpdatingUsersPassword(false);
+  }
+};
 
   const handleDeleteComplaint = async (complaintId: string) => {
     try {

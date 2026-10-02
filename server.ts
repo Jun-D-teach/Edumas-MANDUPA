@@ -861,20 +861,62 @@ app.get('/api/admin/users', async (req, res) => {
   res.json(filteredUsers);
 });
 
-app.post('/api/admin/update-user', (req, res) => {
+app.post('/api/admin/update-user', async (req, res) => {
   const { userId, name, email, password } = req.body;
+  
+  console.log('[Admin Update] Menerima request update user:', { userId, name, email });
+  
   if (!userId) {
     return res.status(400).json({ error: 'User ID wajib diisi.' });
   }
+  
   const targetUser = store.users.find(u => u.id === userId);
   if (!targetUser) {
+    console.log('[Admin Update] ❌ User tidak ditemukan:', userId);
     return res.status(404).json({ error: 'Akun petugas tidak ditemukan.' });
   }
+  
+  console.log('[Admin Update] User ditemukan:', targetUser.email);
+  
+  // Update data di local store
   if (name) targetUser.name = name;
   if (email) targetUser.email = email.toLowerCase().trim();
   if (password) targetUser.password = password;
+  
   saveStore();
-  return res.json({ success: true, message: `Data akun ${targetUser.name} berhasil diperbarui.` });
+  console.log('[Admin Update] ✅ Data lokal berhasil diupdate');
+  
+  // ✅ SYNC KE GOOGLE SHEETS
+  if (store.gasUrl) {
+    console.log('[Admin Update] 🔄 Mengirim update ke Google Sheets...');
+    try {
+      const gasResult = await syncToGAS('updateUser', {
+        userId: targetUser.id,
+        email: targetUser.email,
+        name: targetUser.name,
+        password: targetUser.password,
+        role: targetUser.role,
+        isVerified: targetUser.isVerified
+      });
+      
+      console.log('[Admin Update] 📡 Response dari GAS:', gasResult);
+      
+      if (gasResult && gasResult.success) {
+        console.log('[Admin Update] ✅ Berhasil sync ke Google Sheets');
+      } else {
+        console.warn('[Admin Update] ⚠️ Gagal sync ke Google Sheets:', gasResult?.error);
+      }
+    } catch (err) {
+      console.error('[Admin Update] ❌ Error saat sync ke GAS:', err);
+    }
+  } else {
+    console.log('[Admin Update] ⚠️ GAS URL kosong, skip sync ke spreadsheet');
+  }
+  
+  return res.json({ 
+    success: true, 
+    message: `Data akun ${targetUser.name} berhasil diperbarui.` 
+  });
 });
 // Endpoint untuk hapus user
 app.delete('/api/admin/delete-user/:userId', (req, res) => {
