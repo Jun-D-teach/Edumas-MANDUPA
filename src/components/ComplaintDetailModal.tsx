@@ -307,7 +307,82 @@ export const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({ comp
               </div>
             </div>
           )}
+          {/* ========================================== */}
+          {/* BAGIAN BUKTI: KTP & BUKTI DUKUNG           */}
+          {/* ========================================== */}
+          <div className="space-y-4">
+            
+            {/* 1. TAMPILAN KTP PELAPOR */}
+            {complaint.pelaporKTP && (
+              <div className="border-2 border-indigo-200 rounded-xl p-4 bg-indigo-50/30">
+                <h5 className="font-bold text-indigo-900 text-xs mb-3 flex items-center gap-2 uppercase tracking-wider">
+                  <IdCard className="w-4 h-4" />
+                  KTP / Identitas Pelapor
+                </h5>
+                <div className="space-y-2">
+                  {complaint.pelaporKTPName && (
+                    <p className="text-[10px] text-slate-500 font-mono bg-white px-2 py-1 rounded border border-indigo-100 inline-block">
+                       {complaint.pelaporKTPName}
+                    </p>
+                  )}
+                  {(complaint.pelaporKTP.startsWith('data:image') || complaint.pelaporKTP.startsWith('http')) ? (
+                    <div className="mt-2">
+                      <img 
+                        src={complaint.pelaporKTP} 
+                        alt="KTP Pelapor" 
+                        className="max-w-full h-auto max-h-80 rounded-lg border border-indigo-200 cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                        onClick={() => window.open(complaint.pelaporKTP, '_blank')}
+                      />
+                      <p className="text-[10px] text-indigo-600 mt-1.5 text-center font-medium">
+                        👆 Klik gambar untuk memperbesar
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-white rounded-lg border border-indigo-100 text-xs text-slate-600 font-mono break-all">
+                      {complaint.pelaporKTP}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
+            {/* 2. TAMPILAN BUKTI DUKUNG */}
+            {complaint.supportingEvidence && (
+              <div className="border-2 border-emerald-200 rounded-xl p-4 bg-emerald-50/30">
+                <h5 className="font-bold text-emerald-900 text-xs mb-3 flex items-center gap-2 uppercase tracking-wider">
+                  <Paperclip className="w-4 h-4" />
+                  Bukti Dukung Kejadian
+                </h5>
+                <div className="space-y-2">
+                  {complaint.supportingEvidenceName && (
+                    <p className="text-[10px] text-slate-500 font-mono bg-white px-2 py-1 rounded border border-emerald-100 inline-block">
+                      📎 {complaint.supportingEvidenceName}
+                    </p>
+                  )}
+                  {(complaint.supportingEvidence.startsWith('data:image') || complaint.supportingEvidence.startsWith('http')) ? (
+                    <div className="mt-2">
+                      <img 
+                        src={complaint.supportingEvidence} 
+                        alt="Bukti Dukung" 
+                        className="max-w-full h-auto max-h-80 rounded-lg border border-emerald-200 cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                        onClick={() => window.open(complaint.supportingEvidence, '_blank')}
+                      />
+                      <p className="text-[10px] text-emerald-600 mt-1.5 text-center font-medium">
+                        👆 Klik gambar untuk memperbesar
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-white rounded-lg border border-emerald-100 text-xs text-slate-600 font-mono break-all">
+                      {complaint.supportingEvidence}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* ========================================== */}
+          {/* AKHIR BAGIAN BUKTI                         */}
+          {/* ========================================== */}
           {/* Timeline Tracking / Logs */}
           <div className="space-y-3.5 pt-2">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Riwayat Tindakan (Sesuai SOP Flowchart)</h4>

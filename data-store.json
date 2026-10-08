@@ -46,7 +46,7 @@
       "name": "Firdaus Hamto Diningso",
       "role": "admin",
       "isVerified": true,
-      "password": "man2plg123",
+      "password": "Hamto321",
       "createdAt": "2026-09-25T08:39:00.942Z",
       "whatsappNumber": ""
     },
@@ -63,7 +63,7 @@
     {
       "id": "u-3",
       "email": "kesiswaan@madrasah.sch.id",
-      "name": "Sururi Handiyanti, S.Pd., M.Si..",
+      "name": "Sururi Handiyanti, S.Pd., M.SI",
       "role": "bidang",
       "isVerified": true,
       "password": "sururi73",
@@ -86,7 +86,7 @@
       "name": "Ely Maleni, S.Pd (Waka Sarana Prasarana)",
       "role": "bidang",
       "isVerified": true,
-      "password": "man2plg123",
+      "password": "Sarpras2EM",
       "createdAt": "2026-09-25T08:39:00.942Z",
       "whatsappNumber": ""
     },
