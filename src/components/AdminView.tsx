@@ -77,7 +77,44 @@ export const AdminView: React.FC<AdminViewProps> = ({
   // Final Publish fields
   const [activePublishRecord, setActivePublishRecord] = useState<Complaint | null>(null);
   const [finalPublishAnswer, setFinalPublishAnswer] = useState('');
+// ✅ State untuk Pengaturan Laporan & Tanda Tangan
+const [reportSettings, setReportSettings] = useState({
+  signatoryName: 'H. Syarifuddin, M.Pd',
+  signatoryNIP: '197508102005011003',
+  signatoryPosition: 'Ketua Tim Pengendalian & Mutu Keluhan',
+  institutionName: 'MAN 2 Kota Palembang'
+});
 
+// Load settings dari localStorage saat komponen mount
+useEffect(() => {
+  const saved = localStorage.getItem('edumas_report_settings');
+  if (saved) {
+    try {
+      setReportSettings(JSON.parse(saved));
+    } catch (e) {
+      console.error('Failed to load report settings', e);
+    }
+  }
+}, []);
+
+// Handler untuk menyimpan settings
+const handleSaveSettings = () => {
+  localStorage.setItem('edumas_report_settings', JSON.stringify(reportSettings));
+  alert('✅ Pengaturan laporan berhasil disimpan!');
+};
+
+// Handler untuk reset ke default
+const handleResetSettings = () => {
+  const defaults = {
+    signatoryName: 'H. Syarifuddin, M.Pd',
+    signatoryNIP: '197508102005011003',
+    signatoryPosition: 'Ketua Tim Pengendalian & Mutu Keluhan',
+    institutionName: 'MAN 2 Kota Palembang'
+  };
+  setReportSettings(defaults);
+  localStorage.setItem('edumas_report_settings', JSON.stringify(defaults));
+  alert('✅ Pengaturan direset ke default!');
+};
   const departments: Department[] = ['Kesiswaan', 'Kurikulum', 'Sarana Prasarana', 'Humas', 'Keamanan', 'Kaur TU'];
   const MONTHS_LABEL_MAP: Record<string, string> = {
     'ALL': 'Semua Bulan',
@@ -256,7 +293,33 @@ const formatDate = (dateString: string) => {
     email: usersNewEmail.trim().toLowerCase(), 
     password: usersNewPassword.trim() 
   });
-  
+  // Tambahkan state baru di bagian atas component AdminView
+const [showSettingsModal, setShowSettingsModal] = useState(false);
+const [reportSettings, setReportSettings] = useState({
+  signatoryName: 'H. Syarifuddin, M.Pd',
+  signatoryNIP: '197508102005011003',
+  signatoryPosition: 'Ketua Tim Pengendalian & Mutu Keluhan',
+  institutionName: 'MAN 2 Kota Palembang'
+});
+
+// Load settings from localStorage on mount
+useEffect(() => {
+  const saved = localStorage.getItem('edumas_report_settings');
+  if (saved) {
+    try {
+      setReportSettings(JSON.parse(saved));
+    } catch (e) {
+      console.error('Failed to load report settings', e);
+    }
+  }
+}, []);
+
+// Save settings handler
+const handleSaveSettings = () => {
+  localStorage.setItem('edumas_report_settings', JSON.stringify(reportSettings));
+  setShowSettingsModal(false);
+  alert('Pengaturan berhasil disimpan!');
+};
   setUpdatingUsersPassword(true);
   setUsersMessage(null);
   
@@ -417,6 +480,17 @@ const formatDate = (dateString: string) => {
           <Layers className="w-4 h-4" />
           Triage Laporan ({complaints.length})
         </button>
+         <button
+    onClick={() => setActiveTab('settings')}
+    className={`flex items-center gap-1.5 px-5 py-3 text-xs md:text-sm font-bold tracking-wide border-b-2 transition-all cursor-pointer ${
+      activeTab === 'settings' 
+        ? 'border-emerald-600 text-emerald-800 bg-emerald-50/40' 
+        : 'border-transparent text-slate-500 hover:text-slate-800'
+    }`}
+  >
+    <Settings className="w-4 h-4" />
+    Pengaturan
+  </button>
         <button
           onClick={() => setActiveTab('report')}
           className={`flex items-center gap-1.5 px-5 py-3 text-xs md:text-sm font-bold tracking-wide border-b-2 transition-all cursor-pointer ${activeTab === 'report' ? 'border-emerald-600 text-emerald-800 bg-emerald-50/40' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
@@ -1333,25 +1407,29 @@ const formatDate = (dateString: string) => {
                     })
                   )}
                 </div>
-
-                {/* SIGNATURE SECTION (Validation Lembar) */}
-                <div className="pt-8 border-t border-slate-100 flex justify-end no-print-break text-xs mt-8">
-                  <div className="text-center space-y-12 pr-6">
-                    <div className="space-y-0.5">
-                      <p className="text-slate-700 font-semibold">
-                        Palembang, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </p>
-                      <p className="text-slate-500 font-medium leading-none mb-1">Mengesahkan,</p>
-                      <p className="font-bold text-slate-850">Ketua Tim Pengendalian & Mutu Keluhan</p>
-                      <p className="text-[10px] text-slate-400 font-medium">MAN 2 Kota Palembang</p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="border-b border-black w-48 mx-auto"></div>
-                      <p className="text-[11px] font-bold uppercase text-slate-800 tracking-wider">NIP. 197508102005011003</p>
-                    </div>
-                  </div>
-                </div>
+                                {/* SIGNATURE SECTION (Validation Lembar) */}
+<div className="pt-8 border-t border-slate-100 flex justify-end no-print-break text-xs mt-8">
+  <div className="text-center space-y-12 pr-6">
+    <div className="space-y-0.5">
+      <p className="text-slate-700 font-semibold">
+        Palembang, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+      </p>
+      <p className="text-slate-500 font-medium leading-none mb-1">Mengesahkan,</p>
+      <p className="font-bold text-slate-850">{reportSettings.signatoryPosition}</p>
+      <p className="text-[10px] text-slate-400 font-medium">{reportSettings.institutionName}</p>
+    </div>
+    <div className="space-y-8">
+      {/* Space for signature */}
+      <div className="h-16"></div>
+      <div className="space-y-1">
+        <p className="font-bold text-slate-800 text-[11px]">{reportSettings.signatoryName}</p>
+        <p className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">
+          NIP. {reportSettings.signatoryNIP}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
               </div>
             </div>
@@ -1696,6 +1774,109 @@ const formatDate = (dateString: string) => {
           </div>
         </div>
       )}
+      {activeTab === 'settings' && (
+  <div className="space-y-6" id="settings-view-hub">
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+      <div className="border-b border-slate-100 pb-4">
+        <h3 className="font-bold text-slate-800 text-base md:text-lg flex items-center gap-2">
+          <Settings className="w-5 h-5 text-emerald-600" />
+          Pengaturan Laporan & Tanda Tangan
+        </h3>
+        <p className="text-xs text-slate-400 mt-1">
+          Konfigurasi informasi penandatangan dan institusi untuk laporan resmi
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Signatory Name */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-slate-500 uppercase">
+            Nama Penandatangan <span className="text-rose-600">*</span>
+          </label>
+          <input
+            type="text"
+            value={reportSettings.signatoryName}
+            onChange={(e) => setReportSettings({...reportSettings, signatoryName: e.target.value})}
+            placeholder="Contoh: H. Syarifuddin, M.Pd"
+            className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          />
+        </div>
+
+        {/* NIP */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-slate-500 uppercase">
+            NIP <span className="text-rose-600">*</span>
+          </label>
+          <input
+            type="text"
+            value={reportSettings.signatoryNIP}
+            onChange={(e) => setReportSettings({...reportSettings, signatoryNIP: e.target.value})}
+            placeholder="Contoh: 197508102005011003"
+            className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Position */}
+        <div className="space-y-2 md:col-span-2">
+          <label className="block text-xs font-bold text-slate-500 uppercase">
+            Jabatan Penandatangan <span className="text-rose-600">*</span>
+          </label>
+          <input
+            type="text"
+            value={reportSettings.signatoryPosition}
+            onChange={(e) => setReportSettings({...reportSettings, signatoryPosition: e.target.value})}
+            placeholder="Contoh: Ketua Tim Pengendalian & Mutu Keluhan"
+            className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          />
+        </div>
+
+        {/* Institution Name */}
+        <div className="space-y-2 md:col-span-2">
+          <label className="block text-xs font-bold text-slate-500 uppercase">
+            Nama Instansi <span className="text-rose-600">*</span>
+          </label>
+          <input
+            type="text"
+            value={reportSettings.institutionName}
+            onChange={(e) => setReportSettings({...reportSettings, institutionName: e.target.value})}
+            placeholder="Contoh: MAN 2 Kota Palembang"
+            className="w-full text-xs border border-slate-200 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-4 border-t border-slate-100">
+        <button
+          onClick={handleSaveSettings}
+          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-2"
+        >
+          <Check className="w-4 h-4" />
+          Simpan Pengaturan
+        </button>
+        <button
+          onClick={() => {
+            setReportSettings({
+              signatoryName: 'H. Syarifuddin, M.Pd',
+              signatoryNIP: '197508102005011003',
+              signatoryPosition: 'Ketua Tim Pengendalian & Mutu Keluhan',
+              institutionName: 'MAN 2 Kota Palembang'
+            });
+          }}
+          className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+        >
+          Reset Default
+        </button>
+      </div>
+
+      {/* Info Box */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
+        <p className="font-bold mb-1">💡 Informasi:</p>
+        <p>Pengaturan ini akan tersimpan di browser Anda dan digunakan untuk semua laporan yang dicetak. Data tersimpan secara lokal di perangkat ini.</p>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Detail logs popup modal */}
       {selectedComplaint && (
