@@ -57,7 +57,8 @@ export default function App() {
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [sandboxOTP, setSandboxOTP] = useState<string | undefined>(undefined);
   const [authError, setAuthError] = useState('');
-
+const [loginLoading, setLoginLoading] = useState(false);
+const [instantLoginLoading, setInstantLoginLoading] = useState(false);
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
@@ -168,34 +169,53 @@ export default function App() {
     }
   }, [user]);
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword })
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        // Handle unverified user redirecting to OTP insertion block
-        if (result.unverified && result.email) {
-          setVerifyEmail(result.email);
-          setAuthError('');
-          return;
-        }
-        throw new Error(result.error || 'Autentikasi gagal.');
+   const handleLoginSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setAuthError('');
+  
+  // Validasi input kosong
+  if (!loginEmail.trim() || !loginPassword.trim()) {
+    setAuthError('⚠️ Email dan kata sandi wajib diisi.');
+    return;
+  }
+  
+  setLoginLoading(true);
+  
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: loginEmail, password: loginPassword })
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      // Handle unverified user
+      if (result.unverified && result.email) {
+        setVerifyEmail(result.email);
+        setAuthError('');
+        return;
       }
-
-      setUser(result.user);
-      setShowAuthCard(false);
-      clearAuthForms();
-    } catch (err: any) {
-      setAuthError(err.message);
+      // Tampilkan error yang jelas
+      const errorMsg = result.error || 'Autentikasi gagal.';
+      if (errorMsg.includes('tidak sesuai') || errorMsg.includes('tidak ditemukan')) {
+        setAuthError('❌ ' + errorMsg + ' Silakan periksa kembali email dan kata sandi Anda.');
+      } else {
+        setAuthError('❌ ' + errorMsg);
+      }
+      return;
     }
-  };
+    
+    setUser(result.user);
+    setShowAuthCard(false);
+    clearAuthForms();
+  } catch (err: any) {
+    setAuthError(' Gagal terkoneksi ke server: ' + (err.message || 'Error tidak diketahui'));
+  } finally {
+    setLoginLoading(false);
+  }
+};
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -348,29 +368,32 @@ const handleForgotRequest = async (e: React.FormEvent) => {
   };
 
   const handleInstantLogin = async (email: string) => {
-    setAuthError('');
-    setLoading(true);
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'man2plg123' })
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Autentikasi gagal.');
-      }
-
-      setUser(result.user);
-      setShowAuthCard(false);
-      clearAuthForms();
-    } catch (err: any) {
-      setAuthError(err.message);
-    } finally {
-      setLoading(false);
+  setAuthError('');
+  setInstantLoginLoading(true); // ← GANTI setLoading dengan setInstantLoginLoading
+  
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: 'man2plg123' })
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      setAuthError('❌ Autentikasi instan gagal: ' + (result.error || 'Error tidak diketahui'));
+      return;
     }
-  };
+    
+    setUser(result.user);
+    setShowAuthCard(false);
+    clearAuthForms();
+  } catch (err: any) {
+    setAuthError('❌ Gagal terkoneksi ke server: ' + (err.message || 'Error tidak diketahui'));
+  } finally {
+    setInstantLoginLoading(false); // ← GANTI setLoading dengan setInstantLoginLoading
+  }
+};
 
   const renderLockedView = (targetRole: UserRole) => {
     const roleDetails = {
@@ -464,12 +487,22 @@ const handleForgotRequest = async (e: React.FormEvent) => {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-2">
           <button
-            onClick={() => handleInstantLogin(activeEmail)}
-            className="flex-1 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/15 cursor-pointer active:scale-95 transition-all flex items-center justify-center gap-1.5"
-          >
-            <Key className="w-3.5 h-3.5" />
-            Autentikasi Instan
-          </button>
+  onClick={() => handleInstantLogin(activeEmail)}
+  disabled={instantLoginLoading}
+  className="flex-1 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/15 cursor-pointer disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-1.5"
+>
+  {instantLoginLoading ? (
+    <>
+      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <span>Memproses...</span>
+    </>
+  ) : (
+    <>
+      <Key className="w-3.5 h-3.5" />
+      Autentikasi Instan
+    </>
+  )}
+</button>
           <button
             onClick={() => {
               setLoginEmail(activeEmail);
@@ -662,6 +695,16 @@ const handleForgotRequest = async (e: React.FormEvent) => {
 
                 {authMode === 'login' ? (
                   <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
+                    {authError && (
+  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs text-center font-medium animate-fade-in">
+    <div className="flex items-center justify-center gap-2">
+      <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+      </svg>
+      <span>{authError}</span>
+    </div>
+  </div>
+)}
                     <div>
                       <label className="block text-slate-500 font-bold mb-1.5">Alamat Email</label>
                       <input
@@ -700,12 +743,20 @@ const handleForgotRequest = async (e: React.FormEvent) => {
                       />
                     </div>
 
-                    <button
-                      type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors cursor-pointer"
-                    >
-                      Masuk Akun
-                    </button>
+                      <button
+  type="submit"
+  disabled={loginLoading}
+  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold py-2.5 px-4 rounded-lg shadow-sm transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
+>
+  {loginLoading ? (
+    <>
+      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <span>Memverifikasi...</span>
+    </>
+  ) : (
+    'Masuk Akun'
+  )}
+</button>
 
                     <div className="text-center pt-2">
                       <span className="text-slate-400">Belum punya akun? </span>
@@ -805,12 +856,16 @@ const handleForgotRequest = async (e: React.FormEvent) => {
     </p>
     
     {/* TAMBAHKAN INI - Tampilkan error jika ada */}
-    {authError && (
-      <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl text-center">
-        ⚠️ {authError}
-      </div>
-    )}
-    
+      {authError && (
+     <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs text-center mb-4 font-medium animate-fade-in">
+       <div className="flex items-center justify-center gap-2">
+         <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+         </svg>
+         <span>{authError}</span>
+       </div>
+     </div>
+   )}
     <div>
       <label className="block text-slate-500 font-bold mb-1.5">Email Terdaftar</label>
       <input
